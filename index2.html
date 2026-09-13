@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ESP32 Web Bluetooth Brightness Control</title>
+  <style>
+    body {
+      font-family: Arial;
+      margin: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+    input[type=range] {
+      width: 300px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>ESP32 BLE Brightness Dashboard</h1>
+
+  <button id="connectButton">Connect to ESP32</button>
+  <p id="status">Status: Not connected</p>
+
+  <h2>Current Brightness</h2>
+  <p id="brightnessValue">---</p>
+
+  <h2>Brightness Configuration</h2>
+
+  <p>
+    Min Brightness:
+    <input type="range" id="minSlider" min="0" max="255" value="50">
+    <span id="minValue">50</span>
+  </p>
+
+  <p>
+    Max Brightness:
+    <input type="range" id="maxSlider" min="0" max="255" value="255">
+    <span id="maxValue">255</span>
+  </p>
+
+  <button id="saveConfigButton">Save to ESP32</button>
+
+  <p>Last config sent: <span id="configSent"></span></p>
+
+<script>
+  // BLE UUIDs (must match your ESP32 sketch)
+  const SERVICE_UUID               = "19b10000-e8f2-537e-4f6c-d104768a1214";
+  const SENSOR_CHARACTERISTIC_UUID = "19b10001-e8f2-537e-4f6c-d104768a1214";
+  const CONFIG_CHARACTERISTIC_UUID = "19b10002-e8f2-537e-4f6c-d104768a1214";
+
+  let bleDevice = null;
+  let bleServer = null;
+  let bleServiceFound = null;
+
+  let sensorCharacteristic = null;
+  let configCharacteristic = null;
+
+  const connectButton = document.getElementById("connectButton");
+  const statusLabel = document.getElementById("status");
+  const brightnessLabel = document.getElementById("brightnessValue");
+
+  const minSlider = document.getElementById("minSlider");
+  const maxSlider = document.getElementById("maxSlider");
+  const minValueLabel = document.getElementById("minValue");
+  const maxValueLabel = document.getElementById("maxValue");
+
+  const saveConfigButton = document.getElementById("saveConfigButton");
+  const configSentLabel = document.getElementById("configSent");
+
+  // Update slider labels
+  minSlider.addEventListener("input", () => {
+    minValueLabel.innerHTML = minSlider.value;
+  });
+
+  maxSlider.addEventListener("input", () => {
+    maxValueLabel.innerHTML = maxSlider.value;
+  });
+
+  // Connect to ESP32
+  connectButton.addEventListener("click", async () => {
+    try {
+      statusLabel.innerHTML = "Status: Requesting device...";
+
+      bleDevice = await navigator.bluetooth.requestDevice({
+        filters: [{ namePrefix: "ESP32" }],
+        optionalServices: [SERVICE_UUID]
+      });
+
+      statusLabel.innerHTML = "Status: Connecting...";
+
+      bleServer = await bleDevice.gatt.connect();
+      bleServiceFound = await bleServer.getPrimaryService(SERVICE_UUID);
+
+      sensorCharacteristic = await bleServiceFound.getCharacteristic(SENSOR_CHARACTERISTIC_UUID);
+      configCharacteristic = await bleServiceFound.getCharacteristic(CONFIG_CHARACTERISTIC_UUID);
+
+      // Subscribe to brightness notifications
+      sensorCharacteristic.startNotifications();
+      sensorCharacteristic.addEventListener("characteristicvaluechanged", event => {
+        let value = new TextDecoder().decode(event.target.value);
+        brightnessLabel.innerHTML = value;
+      });
+
+      statusLabel.innerHTML = "Status: Connected";
+
+    } catch (error) {
+      console.error(error);
+      statusLabel.innerHTML = "Status: Error connecting";
+    }
+  });
+
+  // Send min/max brightness to ESP32
+  saveConfigButton.addEventListener("click", async () => {
+    if (!configCharacteristic) {
+      alert("Not connected to ESP32");
+      return;
+    }
+
+    const minVal = parseInt(minSlider.value);
+    const maxVal = parseInt(maxSlider.value);
+
+    if (maxVal < minVal) {
+      alert("Max must be >= Min");
+      return;
+    }
+
+    // Two-byte packet: [min, max]
+    const data = new Uint8Array([minVal & 0xFF, maxVal & 0xFF]);
+
+    try {
+      await configCharacteristic.writeValue(data);
+      configSentLabel.innerHTML = `min=${minVal}, max=${maxVal}`;
+    } catch (error) {
+      console.error("Error writing config:", error);
+    }
+  });
+</script>
+
+</body>
+</html>
