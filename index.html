@@ -19,7 +19,7 @@
 </head>
 
 <body>
-  <h1>ESP32 BLE Brightness Dashboard 6:38p</h1>
+  <h1>ESP32 BLE Brightness Dashboard 6:40p</h1>
 
   <button id="connectButton">Connect to ESP32</button>
   <p id="status">Status: Not connected</p>
@@ -134,7 +134,7 @@
       //await configCharacteristic.writeValue(data);
       
       
-      await ConfigCharacteristic.writeValue(new Uint8Array([minVal, maxVal, 0]).buffer);
+      await configCharacteristic.writeValue(new Uint8Array([minVal, maxVal, 0]).buffer);
 
       configSentLabel.innerHTML = `min=${minVal}, max=${maxVal}`;
 
