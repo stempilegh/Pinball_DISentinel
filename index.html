@@ -12,7 +12,7 @@
 </head>
 
 <body>
-  <h1>ESP32 4‑Channel BLE Dashboard</h1>
+  <h1>ESP32 4‑Channel BLE Dashboard (Real‑Time)</h1>
 
   <button id="connectButton">Connect</button>
   <p id="status">Status: Not connected</p>
@@ -27,70 +27,59 @@
 
   <div class="channel">
     <h3>Channel 1</h3>
-    Min: <input type="range" id="min1" min="0" max="255" value="0"> <span id="min1v">0</span><br>
-    Max: <input type="range" id="max1" min="0" max="255" value="255"> <span id="max1v">255</span><br>
-    Fade: <input type="range" id="fade1" min="1" max="20" value="5"> <span id="fade1v">5</span>
+    Min: <input type="range" id="min1" min="0" max="255"><span id="min1v"></span><br>
+    Max: <input type="range" id="max1" min="0" max="255"><span id="max1v"></span><br>
+    Fade: <input type="range" id="fade1" min="1" max="20"><span id="fade1v"></span><br>
+    Brightness: <input type="range" id="b1s" min="0" max="255"><span id="b1sv"></span>
   </div>
 
   <div class="channel">
     <h3>Channel 2</h3>
-    Min: <input type="range" id="min2" min="0" max="255" value="0"> <span id="min2v">0</span><br>
-    Max: <input type="range" id="max2" min="0" max="255" value="255"> <span id="max2v">255</span><br>
-    Fade: <input type="range" id="fade2" min="1" max="20" value="5"> <span id="fade2v">5</span>
+    Min: <input type="range" id="min2" min="0" max="255"><span id="min2v"></span><br>
+    Max: <input type="range" id="max2" min="0" max="255"><span id="max2v"></span><br>
+    Fade: <input type="range" id="fade2" min="1" max="20"><span id="fade2v"></span><br>
+    Brightness: <input type="range" id="b2s" min="0" max="255"><span id="b2sv"></span>
   </div>
 
   <div class="channel">
     <h3>Channel 3</h3>
-    Min: <input type="range" id="min3" min="0" max="255" value="0"> <span id="min3v">0</span><br>
-    Max: <input type="range" id="max3" min="0" max="255" value="255"> <span id="max3v">255</span><br>
-    Fade: <input type="range" id="fade3" min="1" max="20" value="5"> <span id="fade3v">5</span>
+    Min: <input type="range" id="min3" min="0" max="255"><span id="min3v"></span><br>
+    Max: <input type="range" id="max3" min="0" max="255"><span id="max3v"></span><br>
+    Fade: <input type="range" id="fade3" min="1" max="20"><span id="fade3v"></span><br>
+    Brightness: <input type="range" id="b3s" min="0" max="255"><span id="b3sv"></span>
   </div>
 
   <div class="channel">
     <h3>Channel 4</h3>
-    Min: <input type="range" id="min4" min="0" max="255" value="0"> <span id="min4v">0</span><br>
-    Max: <input type="range" id="max4" min="0" max="255" value="255"> <span id="max4v">255</span><br>
-    Fade: <input type="range" id="fade4" min="1" max="20" value="5"> <span id="fade4v">5</span>
+    Min: <input type="range" id="min4" min="0" max="255"><span id="min4v"></span><br>
+    Max: <input type="range" id="max4" min="0" max="255"><span id="max4v"></span><br>
+    Fade: <input type="range" id="fade4" min="1" max="20"><span id="fade4v"></span><br>
+    Brightness: <input type="range" id="b4s" min="0" max="255"><span id="b4sv"></span>
   </div>
-
-  <button id="saveConfigButton">Save All</button>
 
 <script>
 const SERVICE_UUID               = "19b10000-e8f2-537e-4f6c-d104768a1214";
 const SENSOR_CHARACTERISTIC_UUID = "19b10001-e8f2-537e-4f6c-d104768a1214";
 const CONFIG_CHARACTERISTIC_UUID = "19b10002-e8f2-537e-4f6c-d104768a1214";
 const SYNC_CHARACTERISTIC_UUID   = "19b10003-e8f2-537e-4f6c-d104768a1214";
+const LIVE_BRIGHTNESS_UUID       = "19b10004-e8f2-537e-4f6c-d104768a1214";
+const LIVE_FADE_UUID             = "19b10005-e8f2-537e-4f6c-d104768a1214";
 
 let sensorCharacteristic = null;
 let configCharacteristic = null;
 let syncCharacteristic   = null;
+let liveBrightness       = null;
+let liveFade             = null;
 
-// Slider label updates
-function bindSlider(slider, label) {
-  slider.addEventListener("input", () => label.innerHTML = slider.value);
+function bindSlider(slider, label, callback) {
+  slider.addEventListener("input", () => {
+    label.innerHTML = slider.value;
+    if (callback) callback();
+  });
 }
 
-bindSlider(min1, min1v);
-bindSlider(max1, max1v);
-bindSlider(fade1, fade1v);
-
-bindSlider(min2, min2v);
-bindSlider(max2, max2v);
-bindSlider(fade2, fade2v);
-
-bindSlider(min3, min3v);
-bindSlider(max3, max3v);
-bindSlider(fade3, fade3v);
-
-bindSlider(min4, min4v);
-bindSlider(max4, max4v);
-bindSlider(fade4, fade4v);
-
-// Connect to ESP32
 document.getElementById("connectButton").onclick = async () => {
   try {
-    document.getElementById("status").innerHTML = "Status: Requesting device...";
-
     const device = await navigator.bluetooth.requestDevice({
       filters: [{ namePrefix: "ESP32" }],
       optionalServices: [SERVICE_UUID]
@@ -102,16 +91,24 @@ document.getElementById("connectButton").onclick = async () => {
     sensorCharacteristic = await service.getCharacteristic(SENSOR_CHARACTERISTIC_UUID);
     configCharacteristic = await service.getCharacteristic(CONFIG_CHARACTERISTIC_UUID);
     syncCharacteristic   = await service.getCharacteristic(SYNC_CHARACTERISTIC_UUID);
+    liveBrightness       = await service.getCharacteristic(LIVE_BRIGHTNESS_UUID);
+    liveFade             = await service.getCharacteristic(LIVE_FADE_UUID);
 
-    // Sync min/max/fade from ESP32
+    // Sync values
     const syncData = await syncCharacteristic.readValue();
     const arr = new Uint8Array(syncData.buffer);
 
-    min1.value = arr[0]; max1.value = arr[1]; fade1.value = arr[2];
-    min2.value = arr[3]; max2.value = arr[4]; fade2.value = arr[5];
-    min3.value = arr[6]; max3.value = arr[7]; fade3.value = arr[8];
-    min4.value = arr[9]; max4.value = arr[10]; fade4.value = arr[11];
+    const mins  = [min1, min2, min3, min4];
+    const maxs  = [max1, max2, max3, max4];
+    const fades = [fade1, fade2, fade3, fade4];
 
+    for (let i = 0; i < 4; i++) {
+      mins[i].value  = arr[i*3];
+      maxs[i].value  = arr[i*3+1];
+      fades[i].value = arr[i*3+2];
+    }
+
+    // Update labels
     min1v.innerHTML = min1.value;
     max1v.innerHTML = max1.value;
     fade1v.innerHTML = fade1.value;
@@ -133,42 +130,35 @@ document.getElementById("connectButton").onclick = async () => {
     sensorCharacteristic.addEventListener("characteristicvaluechanged", event => {
       let txt   = new TextDecoder().decode(event.target.value);
       let parts = txt.split(",");
-      if (parts.length >= 4) {
-        b1.innerHTML = parts[0];
-        b2.innerHTML = parts[1];
-        b3.innerHTML = parts[2];
-        b4.innerHTML = parts[3];
-      }
+      b1.innerHTML = parts[0];
+      b2.innerHTML = parts[1];
+      b3.innerHTML = parts[2];
+      b4.innerHTML = parts[3];
     });
 
-    document.getElementById("status").innerHTML = "Status: Connected";
+    document.getElementById("status").innerHTML = "Connected";
   } catch (e) {
     console.error(e);
-    document.getElementById("status").innerHTML = "Status: Error connecting";
+    document.getElementById("status").innerHTML = "Error";
   }
 };
 
-// Send min/max/fade for all 4 channels
-document.getElementById("saveConfigButton").onclick = async () => {
-  if (!configCharacteristic) {
-    alert("Not connected to ESP32");
-    return;
-  }
+// Real-time brightness
+function sendBrightness() {
+  const data = new Uint8Array([
+    b1s.value,
+    b2s.value,
+    b3s.value,
+    b4s.value
+  ]);
+  liveBrightness.writeValue(data);
+}
 
-  const data = new Uint8Array(12);
-
-  data[0] = min1.value; data[1] = max1.value; data[2] = fade1.value;
-  data[3] = min2.value; data[4] = max2.value; data[5] = fade2.value;
-  data[6] = min3.value; data[7] = max3.value; data[8] = fade3.value;
-  data[9] = min4.value; data[10] = max4.value; data[11] = fade4.value;
-
-  try {
-    await configCharacteristic.writeValue(data.buffer);
-  } catch (e) {
-    console.error("Error writing config:", e);
-  }
-};
-</script>
-
-</body>
-</html>
+// Real-time fade speed
+function sendFade() {
+  const data = new Uint8Array([
+    fade1.value,
+    fade2.value,
+    fade3.value,
+    fade4.value
+  ]);
