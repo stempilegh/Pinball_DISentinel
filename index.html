@@ -19,7 +19,7 @@
 </head>
 
 <body>
-  <h1>ESP32 BLE Brightness Dashboard 6:44p</h1>
+  <h1>ESP32 BLE Brightness Dashboard 9:05p</h1>
 
   <button id="connectButton">Connect to ESP32</button>
   <p id="status">Status: Not connected</p>
@@ -129,7 +129,7 @@
 
   try {
     // Stop notifications to avoid C3 race condition
-    await sensorCharacteristic.stopNotifications();
+    //await sensorCharacteristic.stopNotifications();
 
     // Safe fixed-length write
     await configCharacteristic.writeValue(
@@ -137,7 +137,7 @@
     );
 
     // Resume notifications
-    await sensorCharacteristic.startNotifications();
+    //await sensorCharacteristic.startNotifications();
 
     configSentLabel.innerHTML = `min=${minVal}, max=${maxVal}`;
   } catch (error) {
