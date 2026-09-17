@@ -12,7 +12,7 @@
 </head>
 
 <body>
-  <h1>ESP32 4‑Channel BLE Dashboard 9:41pm</h1>
+  <h1>ESP32 4‑Channel BLE Dashboard</h1>
 
   <button id="connectButton">Connect</button>
   <p id="status">Status: Not connected</p>
@@ -27,42 +27,30 @@
 
   <div class="channel">
     <h3>Channel 1</h3>
-    Min:
-    <input type="range" id="min1" min="0" max="255" value="0">
-    <span id="min1v">0</span><br>
-    Max:
-    <input type="range" id="max1" min="0" max="255" value="255">
-    <span id="max1v">255</span>
+    Min: <input type="range" id="min1" min="0" max="255" value="0"> <span id="min1v">0</span><br>
+    Max: <input type="range" id="max1" min="0" max="255" value="255"> <span id="max1v">255</span><br>
+    Fade: <input type="range" id="fade1" min="1" max="20" value="5"> <span id="fade1v">5</span>
   </div>
 
   <div class="channel">
     <h3>Channel 2</h3>
-    Min:
-    <input type="range" id="min2" min="0" max="255" value="0">
-    <span id="min2v">0</span><br>
-    Max:
-    <input type="range" id="max2" min="0" max="255" value="255">
-    <span id="max2v">255</span>
+    Min: <input type="range" id="min2" min="0" max="255" value="0"> <span id="min2v">0</span><br>
+    Max: <input type="range" id="max2" min="0" max="255" value="255"> <span id="max2v">255</span><br>
+    Fade: <input type="range" id="fade2" min="1" max="20" value="5"> <span id="fade2v">5</span>
   </div>
 
   <div class="channel">
     <h3>Channel 3</h3>
-    Min:
-    <input type="range" id="min3" min="0" max="255" value="0">
-    <span id="min3v">0</span><br>
-    Max:
-    <input type="range" id="max3" min="0" max="255" value="255">
-    <span id="max3v">255</span>
+    Min: <input type="range" id="min3" min="0" max="255" value="0"> <span id="min3v">0</span><br>
+    Max: <input type="range" id="max3" min="0" max="255" value="255"> <span id="max3v">255</span><br>
+    Fade: <input type="range" id="fade3" min="1" max="20" value="5"> <span id="fade3v">5</span>
   </div>
 
   <div class="channel">
     <h3>Channel 4</h3>
-    Min:
-    <input type="range" id="min4" min="0" max="255" value="0">
-    <span id="min4v">0</span><br>
-    Max:
-    <input type="range" id="max4" min="0" max="255" value="255">
-    <span id="max4v">255</span>
+    Min: <input type="range" id="min4" min="0" max="255" value="0"> <span id="min4v">0</span><br>
+    Max: <input type="range" id="max4" min="0" max="255" value="255"> <span id="max4v">255</span><br>
+    Fade: <input type="range" id="fade4" min="1" max="20" value="5"> <span id="fade4v">5</span>
   </div>
 
   <button id="saveConfigButton">Save All</button>
@@ -71,37 +59,32 @@
 const SERVICE_UUID               = "19b10000-e8f2-537e-4f6c-d104768a1214";
 const SENSOR_CHARACTERISTIC_UUID = "19b10001-e8f2-537e-4f6c-d104768a1214";
 const CONFIG_CHARACTERISTIC_UUID = "19b10002-e8f2-537e-4f6c-d104768a1214";
+const SYNC_CHARACTERISTIC_UUID   = "19b10003-e8f2-537e-4f6c-d104768a1214";
 
 let sensorCharacteristic = null;
 let configCharacteristic = null;
+let syncCharacteristic   = null;
 
 // Slider label updates
-const min1  = document.getElementById("min1");
-const max1  = document.getElementById("max1");
-const min2  = document.getElementById("min2");
-const max2  = document.getElementById("max2");
-const min3  = document.getElementById("min3");
-const max3  = document.getElementById("max3");
-const min4  = document.getElementById("min4");
-const max4  = document.getElementById("max4");
+function bindSlider(slider, label) {
+  slider.addEventListener("input", () => label.innerHTML = slider.value);
+}
 
-const min1v = document.getElementById("min1v");
-const max1v = document.getElementById("max1v");
-const min2v = document.getElementById("min2v");
-const max2v = document.getElementById("max2v");
-const min3v = document.getElementById("min3v");
-const max3v = document.getElementById("max3v");
-const min4v = document.getElementById("min4v");
-const max4v = document.getElementById("max4v");
+bindSlider(min1, min1v);
+bindSlider(max1, max1v);
+bindSlider(fade1, fade1v);
 
-min1.addEventListener("input", () => min1v.innerHTML = min1.value);
-max1.addEventListener("input", () => max1v.innerHTML = max1.value);
-min2.addEventListener("input", () => min2v.innerHTML = min2.value);
-max2.addEventListener("input", () => max2v.innerHTML = max2.value);
-min3.addEventListener("input", () => min3v.innerHTML = min3.value);
-max3.addEventListener("input", () => max3v.innerHTML = max3.value);
-min4.addEventListener("input", () => min4v.innerHTML = min4.value);
-max4.addEventListener("input", () => max4v.innerHTML = max4.value);
+bindSlider(min2, min2v);
+bindSlider(max2, max2v);
+bindSlider(fade2, fade2v);
+
+bindSlider(min3, min3v);
+bindSlider(max3, max3v);
+bindSlider(fade3, fade3v);
+
+bindSlider(min4, min4v);
+bindSlider(max4, max4v);
+bindSlider(fade4, fade4v);
 
 // Connect to ESP32
 document.getElementById("connectButton").onclick = async () => {
@@ -113,13 +96,37 @@ document.getElementById("connectButton").onclick = async () => {
       optionalServices: [SERVICE_UUID]
     });
 
-    document.getElementById("status").innerHTML = "Status: Connecting...";
-
     const server  = await device.gatt.connect();
     const service = await server.getPrimaryService(SERVICE_UUID);
 
     sensorCharacteristic = await service.getCharacteristic(SENSOR_CHARACTERISTIC_UUID);
     configCharacteristic = await service.getCharacteristic(CONFIG_CHARACTERISTIC_UUID);
+    syncCharacteristic   = await service.getCharacteristic(SYNC_CHARACTERISTIC_UUID);
+
+    // Sync min/max/fade from ESP32
+    const syncData = await syncCharacteristic.readValue();
+    const arr = new Uint8Array(syncData.buffer);
+
+    min1.value = arr[0]; max1.value = arr[1]; fade1.value = arr[2];
+    min2.value = arr[3]; max2.value = arr[4]; fade2.value = arr[5];
+    min3.value = arr[6]; max3.value = arr[7]; fade3.value = arr[8];
+    min4.value = arr[9]; max4.value = arr[10]; fade4.value = arr[11];
+
+    min1v.innerHTML = min1.value;
+    max1v.innerHTML = max1.value;
+    fade1v.innerHTML = fade1.value;
+
+    min2v.innerHTML = min2.value;
+    max2v.innerHTML = max2.value;
+    fade2v.innerHTML = fade2.value;
+
+    min3v.innerHTML = min3.value;
+    max3v.innerHTML = max3.value;
+    fade3v.innerHTML = fade3.value;
+
+    min4v.innerHTML = min4.value;
+    max4v.innerHTML = max4.value;
+    fade4v.innerHTML = fade4.value;
 
     // Subscribe to brightness notifications
     await sensorCharacteristic.startNotifications();
@@ -127,10 +134,10 @@ document.getElementById("connectButton").onclick = async () => {
       let txt   = new TextDecoder().decode(event.target.value);
       let parts = txt.split(",");
       if (parts.length >= 4) {
-        document.getElementById("b1").innerHTML = parts[0];
-        document.getElementById("b2").innerHTML = parts[1];
-        document.getElementById("b3").innerHTML = parts[2];
-        document.getElementById("b4").innerHTML = parts[3];
+        b1.innerHTML = parts[0];
+        b2.innerHTML = parts[1];
+        b3.innerHTML = parts[2];
+        b4.innerHTML = parts[3];
       }
     });
 
@@ -141,36 +148,19 @@ document.getElementById("connectButton").onclick = async () => {
   }
 };
 
-// Send min/max for all 4 channels
+// Send min/max/fade for all 4 channels
 document.getElementById("saveConfigButton").onclick = async () => {
   if (!configCharacteristic) {
     alert("Not connected to ESP32");
     return;
   }
 
-  const mins = [
-    parseInt(min1.value), parseInt(min2.value),
-    parseInt(min3.value), parseInt(min4.value)
-  ];
+  const data = new Uint8Array(12);
 
-  const maxs = [
-    parseInt(max1.value), parseInt(max2.value),
-    parseInt(max3.value), parseInt(max4.value)
-  ];
-
-  // Basic sanity: max >= min per channel
-  for (let i = 0; i < 4; i++) {
-    if (maxs[i] < mins[i]) {
-      alert(`Channel ${i+1}: Max must be >= Min`);
-      return;
-    }
-  }
-
-  const data = new Uint8Array(8);
-  for (let i = 0; i < 4; i++) {
-    data[i*2]   = mins[i] & 0xFF;
-    data[i*2+1] = maxs[i] & 0xFF;
-  }
+  data[0] = min1.value; data[1] = max1.value; data[2] = fade1.value;
+  data[3] = min2.value; data[4] = max2.value; data[5] = fade2.value;
+  data[6] = min3.value; data[7] = max3.value; data[8] = fade3.value;
+  data[9] = min4.value; data[10] = max4.value; data[11] = fade4.value;
 
   try {
     await configCharacteristic.writeValue(data.buffer);
