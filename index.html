@@ -19,7 +19,7 @@
 </head>
 
 <body>
-  <h1>ESP32 BLE Brightness Dashboard 6:40p</h1>
+  <h1>ESP32 BLE Brightness Dashboard 6:44p</h1>
 
   <button id="connectButton">Connect to ESP32</button>
   <p id="status">Status: Not connected</p>
@@ -112,8 +112,40 @@
     }
   });
 
-  // Send min/max brightness to ESP32
-  saveConfigButton.addEventListener("click", async () => {
+  // Send min/max brightness to ESP32 - adding pause
+ saveConfigButton.addEventListener("click", async () => {
+  if (!configCharacteristic) {
+    alert("Not connected to ESP32");
+    return;
+  }
+
+  const minVal = parseInt(minSlider.value);
+  const maxVal = parseInt(maxSlider.value);
+
+  if (maxVal < minVal) {
+    alert("Max must be >= Min");
+    return;
+  }
+
+  try {
+    // Stop notifications to avoid C3 race condition
+    await sensorCharacteristic.stopNotifications();
+
+    // Safe fixed-length write
+    await configCharacteristic.writeValue(
+      new Uint8Array([minVal, maxVal, 0]).buffer
+    );
+
+    // Resume notifications
+    await sensorCharacteristic.startNotifications();
+
+    configSentLabel.innerHTML = `min=${minVal}, max=${maxVal}`;
+  } catch (error) {
+    console.error("Error writing config:", error);
+  }
+});
+  
+ /* saveConfigButton.addEventListener("click", async () => {
     if (!configCharacteristic) {
       alert("Not connected to ESP32");
       return;
@@ -142,7 +174,9 @@
     } catch (error) {
       console.error("Error writing config:", error);
     }
-  });
+  }); */
+
+  
 </script>
 
 </body>
