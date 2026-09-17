@@ -2,181 +2,114 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>ESP32 Web Bluetooth Brightness Control</title>
+  <title>ESP32 4‑Channel BLE Dashboard</title>
   <style>
-    body {
-      font-family: Arial;
-      margin: 20px;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-    }
-    input[type=range] {
-      width: 300px;
-    }
+    body { font-family: Arial; margin: 20px; }
+    input[type=range] { width: 300px; }
   </style>
 </head>
 
 <body>
-  <h1>ESP32 BLE Brightness Dashboard 9:05p</h1>
+  <h1>ESP32 4‑Channel BLE Dashboard</h1>
 
-  <button id="connectButton">Connect to ESP32</button>
+  <button id="connectButton">Connect</button>
   <p id="status">Status: Not connected</p>
 
   <h2>Current Brightness</h2>
-  <p id="brightnessValue">---</p>
+  <p>CH1: <span id="b1">---</span></p>
+  <p>CH2: <span id="b2">---</span></p>
+  <p>CH3: <span id="b3">---</span></p>
+  <p>CH4: <span id="b4">---</span></p>
 
-  <h2>Brightness Configuration</h2>
+  <h2>Configuration</h2>
 
-  <p>
-    Min Brightness:
-    <input type="range" id="minSlider" min="0" max="255" value="0">
-    <span id="minValue">0</span>
-  </p>
+  <div>
+    <h3>Channel 1</h3>
+    Min: <input type="range" id="min1" min="0" max="255" value="0"> <span id="min1v">0</span><br>
+    Max: <input type="range" id="max1" min="0" max="255" value="255"> <span id="max1v">255</span>
+  </div>
 
-  <p>
-    Max Brightness:
-    <input type="range" id="maxSlider" min="0" max="255" value="255">
-    <span id="maxValue">255</span>
-  </p>
+  <div>
+    <h3>Channel 2</h3>
+    Min: <input type="range" id="min2" min="0" max="255" value="0"> <span id="min2v">0</span><br>
+    Max: <input type="range" id="max2" min="0" max="255" value="255"> <span id="max2v">255</span>
+  </div>
 
-  <button id="saveConfigButton">Save to ESP32</button>
+  <div>
+    <h3>Channel 3</h3>
+    Min: <input type="range" id="min3" min="0" max="255" value="0"> <span id="min3v">0</span><br>
+    Max: <input type="range" id="max3" min="0" max="255" value="255"> <span id="max3v">255</span>
+  </div>
 
-  <p>Last config sent: <span id="configSent"></span></p>
+  <div>
+    <h3>Channel 4</h3>
+    Min: <input type="range" id="min4" min="0" max="255" value="0"> <span id="min4v">0</span><br>
+    Max: <input type="range" id="max4" min="0" max="255" value="255"> <span id="max4v">255</span>
+  </div>
+
+  <button id="saveConfigButton">Save All</button>
 
 <script>
-  // BLE UUIDs (must match your ESP32 sketch)
-  const SERVICE_UUID               = "19b10000-e8f2-537e-4f6c-d104768a1214";
-  const SENSOR_CHARACTERISTIC_UUID = "19b10001-e8f2-537e-4f6c-d104768a1214";
-  const CONFIG_CHARACTERISTIC_UUID = "19b10002-e8f2-537e-4f6c-d104768a1214";
+const SERVICE_UUID               = "19b10000-e8f2-537e-4f6c-d104768a1214";
+const SENSOR_CHARACTERISTIC_UUID = "19b10001-e8f2-537e-4f6c-d104768a1214";
+const CONFIG_CHARACTERISTIC_UUID = "19b10002-e8f2-537e-4f6c-d104768a1214";
 
-  let bleDevice = null;
-  let bleServer = null;
-  let bleServiceFound = null;
+let sensorCharacteristic = null;
+let configCharacteristic = null;
 
-  let sensorCharacteristic = null;
-  let configCharacteristic = null;
-
-  const connectButton = document.getElementById("connectButton");
-  const statusLabel = document.getElementById("status");
-  const brightnessLabel = document.getElementById("brightnessValue");
-
-  const minSlider = document.getElementById("minSlider");
-  const maxSlider = document.getElementById("maxSlider");
-  const minValueLabel = document.getElementById("minValue");
-  const maxValueLabel = document.getElementById("maxValue");
-
-  const saveConfigButton = document.getElementById("saveConfigButton");
-  const configSentLabel = document.getElementById("configSent");
-
-  // Update slider labels
-  minSlider.addEventListener("input", () => {
-    minValueLabel.innerHTML = minSlider.value;
-  });
-
-  maxSlider.addEventListener("input", () => {
-    maxValueLabel.innerHTML = maxSlider.value;
-  });
-
-  // Connect to ESP32
-  connectButton.addEventListener("click", async () => {
-    try {
-      statusLabel.innerHTML = "Status: Requesting device...";
-
-      bleDevice = await navigator.bluetooth.requestDevice({
-        filters: [{ namePrefix: "ESP32" }],
-        optionalServices: [SERVICE_UUID]
-      });
-
-      statusLabel.innerHTML = "Status: Connecting...";
-
-      bleServer = await bleDevice.gatt.connect();
-      bleServiceFound = await bleServer.getPrimaryService(SERVICE_UUID);
-
-      sensorCharacteristic = await bleServiceFound.getCharacteristic(SENSOR_CHARACTERISTIC_UUID);
-      configCharacteristic = await bleServiceFound.getCharacteristic(CONFIG_CHARACTERISTIC_UUID);
-
-      // Subscribe to brightness notifications
-      sensorCharacteristic.startNotifications();
-      sensorCharacteristic.addEventListener("characteristicvaluechanged", event => {
-        let value = new TextDecoder().decode(event.target.value);
-        brightnessLabel.innerHTML = value;
-      });
-
-      statusLabel.innerHTML = "Status: Connected";
-
-    } catch (error) {
-      console.error(error);
-      statusLabel.innerHTML = "Status: Error connecting";
-    }
-  });
-
-  // Send min/max brightness to ESP32 - adding pause
- saveConfigButton.addEventListener("click", async () => {
-  if (!configCharacteristic) {
-    alert("Not connected to ESP32");
-    return;
-  }
-
-  const minVal = parseInt(minSlider.value);
-  const maxVal = parseInt(maxSlider.value);
-
-  if (maxVal < minVal) {
-    alert("Max must be >= Min");
-    return;
-  }
-
+document.getElementById("connectButton").onclick = async () => {
   try {
-    // Stop notifications to avoid C3 race condition
-    //await sensorCharacteristic.stopNotifications();
+    document.getElementById("status").innerHTML = "Requesting device...";
 
-    // Safe fixed-length write
-    await configCharacteristic.writeValue(
-      new Uint8Array([minVal, maxVal, 0]).buffer
-    );
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: "ESP32" }],
+      optionalServices: [SERVICE_UUID]
+    });
 
-    // Resume notifications
-    //await sensorCharacteristic.startNotifications();
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE_UUID);
 
-    configSentLabel.innerHTML = `min=${minVal}, max=${maxVal}`;
-  } catch (error) {
-    console.error("Error writing config:", error);
+    sensorCharacteristic = await service.getCharacteristic(SENSOR_CHARACTERISTIC_UUID);
+    configCharacteristic = await service.getCharacteristic(CONFIG_CHARACTERISTIC_UUID);
+
+    sensorCharacteristic.startNotifications();
+    sensorCharacteristic.addEventListener("characteristicvaluechanged", event => {
+      let txt = new TextDecoder().decode(event.target.value);
+      let parts = txt.split(",");
+      document.getElementById("b1").innerHTML = parts[0];
+      document.getElementById("b2").innerHTML = parts[1];
+      document.getElementById("b3").innerHTML = parts[2];
+      document.getElementById("b4").innerHTML = parts[3];
+    });
+
+    document.getElementById("status").innerHTML = "Connected";
+  } catch (e) {
+    console.error(e);
+    document.getElementById("status").innerHTML = "Error";
   }
-});
-  
- /* saveConfigButton.addEventListener("click", async () => {
-    if (!configCharacteristic) {
-      alert("Not connected to ESP32");
-      return;
-    }
+};
 
-    const minVal = parseInt(minSlider.value);
-    const maxVal = parseInt(maxSlider.value);
+document.getElementById("saveConfigButton").onclick = async () => {
+  if (!configCharacteristic) return alert("Not connected");
 
-    if (maxVal < minVal) {
-      alert("Max must be >= Min");
-      return;
-    }
+  const mins = [
+    parseInt(min1.value), parseInt(min2.value),
+    parseInt(min3.value), parseInt(min4.value)
+  ];
 
-    // Two-byte packet: [min, max]
-    const data = new Uint8Array([minVal & 0xFF, maxVal & 0xFF]);
+  const maxs = [
+    parseInt(max1.value), parseInt(max2.value),
+    parseInt(max3.value), parseInt(max4.value)
+  ];
 
-    try {
-      //await configCharacteristic.writeValue(data);
-      
-      
-      await configCharacteristic.writeValue(new Uint8Array([minVal, maxVal, 0]).buffer);
+  const data = new Uint8Array(8);
+  for (let i=0; i<4; i++) {
+    data[i*2]   = mins[i];
+    data[i*2+1] = maxs[i];
+  }
 
-      configSentLabel.innerHTML = `min=${minVal}, max=${maxVal}`;
-
-      
-    } catch (error) {
-      console.error("Error writing config:", error);
-    }
-  }); */
-
-  
+  await configCharacteristic.writeValue(data.buffer);
+};
 </script>
 
 </body>
