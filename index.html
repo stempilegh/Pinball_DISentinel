@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>ESP32 4‑Channel BLE Dashboard</title>
+  <title>ESP32 4‑Channel BLE Dashboard (Real‑Time)</title>
   <style>
     body { font-family: Arial; margin: 20px; }
     input[type=range] { width: 300px; }
@@ -78,6 +78,39 @@ function bindSlider(slider, label, callback) {
   });
 }
 
+// Real-time brightness
+function sendBrightness() {
+  const data = new Uint8Array([
+    b1s.value,
+    b2s.value,
+    b3s.value,
+    b4s.value
+  ]);
+  liveBrightness.writeValue(data);
+}
+
+// Real-time fade speed
+function sendFade() {
+  const data = new Uint8Array([
+    fade1.value,
+    fade2.value,
+    fade3.value,
+    fade4.value
+  ]);
+  liveFade.writeValue(data);
+}
+
+// Real-time min/max config
+function sendMinMax() {
+  const data = new Uint8Array([
+    min1.value, max1.value, fade1.value,
+    min2.value, max2.value, fade2.value,
+    min3.value, max3.value, fade3.value,
+    min4.value, max4.value, fade4.value
+  ]);
+  configCharacteristic.writeValue(data);
+}
+
 document.getElementById("connectButton").onclick = async () => {
   try {
     const device = await navigator.bluetooth.requestDevice({
@@ -125,6 +158,27 @@ document.getElementById("connectButton").onclick = async () => {
     max4v.innerHTML = max4.value;
     fade4v.innerHTML = fade4.value;
 
+    // Bind sliders
+    bindSlider(min1, min1v, sendMinMax);
+    bindSlider(max1, max1v, sendMinMax);
+    bindSlider(fade1, fade1v, sendFade);
+    bindSlider(b1s, b1sv, sendBrightness);
+
+    bindSlider(min2, min2v, sendMinMax);
+    bindSlider(max2, max2v, sendMinMax);
+    bindSlider(fade2, fade2v, sendFade);
+    bindSlider(b2s, b2sv, sendBrightness);
+
+    bindSlider(min3, min3v, sendMinMax);
+    bindSlider(max3, max3v, sendMinMax);
+    bindSlider(fade3, fade3v, sendFade);
+    bindSlider(b3s, b3sv, sendBrightness);
+
+    bindSlider(min4, min4v, sendMinMax);
+    bindSlider(max4, max4v, sendMinMax);
+    bindSlider(fade4, fade4v, sendFade);
+    bindSlider(b4s, b4sv, sendBrightness);
+
     // Subscribe to brightness notifications
     await sensorCharacteristic.startNotifications();
     sensorCharacteristic.addEventListener("characteristicvaluechanged", event => {
@@ -139,26 +193,10 @@ document.getElementById("connectButton").onclick = async () => {
     document.getElementById("status").innerHTML = "Connected";
   } catch (e) {
     console.error(e);
-    document.getElementById("status").innerHTML = "Error";
+    document.getElementById("status").innerHTML = "Error connecting";
   }
 };
+</script>
 
-// Real-time brightness
-function sendBrightness() {
-  const data = new Uint8Array([
-    b1s.value,
-    b2s.value,
-    b3s.value,
-    b4s.value
-  ]);
-  liveBrightness.writeValue(data);
-}
-
-// Real-time fade speed
-function sendFade() {
-  const data = new Uint8Array([
-    fade1.value,
-    fade2.value,
-    fade3.value,
-    fade4.value
-  ]);
+</body>
+</html>
