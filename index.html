@@ -2,121 +2,66 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>ESP32 GI Sentinel Config</title>
+  <title>ESP32 4‑Channel BLE Dashboard</title>
   <style>
     body { font-family: Arial; margin: 20px; }
     input[type=range] { width: 300px; }
     h3 { margin-bottom: 5px; }
-    .channel { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #ccc; }
-    .label { display: inline-block; width: 140px; }
+    .channel { margin-bottom: 15px; }
   </style>
 </head>
 
 <body>
-  <h1>ESP32 GI Sentinel Config</h1>
+  <h1>ESP32 4‑Channel BLE Dashboard</h1>
 
   <button id="connectButton">Connect</button>
   <p id="status">Status: Not connected</p>
 
-  <h2>Current Brightness (monitor only)</h2>
+  <h2>Current Brightness</h2>
   <p>CH1: <span id="b1">---</span></p>
   <p>CH2: <span id="b2">---</span></p>
   <p>CH3: <span id="b3">---</span></p>
   <p>CH4: <span id="b4">---</span></p>
 
-  <h2>Per‑Channel Configuration</h2>
+  <h2>Configuration</h2>
 
   <div class="channel">
     <h3>Channel 1</h3>
-    <span class="label">Min:</span>
-    <input type="range" id="min1" min="0" max="255" value="0">
-    <span id="min1v">0</span><br>
-
-    <span class="label">Max:</span>
-    <input type="range" id="max1" min="0" max="255" value="255">
-    <span id="max1v">255</span><br>
-
-    <span class="label">Fade Speed:</span>
-    <input type="range" id="fade1" min="1" max="20" value="5">
-    <span id="fade1v">5</span><br>
-
-    <span class="label">Down Delay (s):</span>
-    <input type="range" id="dd1" min="0" max="20" step="1" value="0">
-    <span id="dd1v">0.0 s</span><br>
-
-    <span class="label">Up Delay (s):</span>
-    <input type="range" id="du1" min="0" max="20" step="1" value="0">
-    <span id="du1v">0.0 s</span>
+    Min: <input type="range" id="min1" min="0" max="255"> <span id="min1v"></span><br>
+    Max: <input type="range" id="max1" min="0" max="255"> <span id="max1v"></span><br>
+    Fade: <input type="range" id="fade1" min="1" max="20"> <span id="fade1v"></span><br>
+    Down Delay: <input type="range" id="dd1" min="0" max="20" step="1"> <span id="dd1v"></span><br>
+    Up Delay: <input type="range" id="du1" min="0" max="20" step="1"> <span id="du1v"></span>
   </div>
 
   <div class="channel">
     <h3>Channel 2</h3>
-    <span class="label">Min:</span>
-    <input type="range" id="min2" min="0" max="255" value="0">
-    <span id="min2v">0</span><br>
-
-    <span class="label">Max:</span>
-    <input type="range" id="max2" min="0" max="255" value="255">
-    <span id="max2v">255</span><br>
-
-    <span class="label">Fade Speed:</span>
-    <input type="range" id="fade2" min="1" max="20" value="5">
-    <span id="fade2v">5</span><br>
-
-    <span class="label">Down Delay (s):</span>
-    <input type="range" id="dd2" min="0" max="20" step="1" value="0">
-    <span id="dd2v">0.0 s</span><br>
-
-    <span class="label">Up Delay (s):</span>
-    <input type="range" id="du2" min="0" max="20" step="1" value="0">
-    <span id="du2v">0.0 s</span>
+    Min: <input type="range" id="min2" min="0" max="255"> <span id="min2v"></span><br>
+    Max: <input type="range" id="max2" min="0" max="255"> <span id="max2v"></span><br>
+    Fade: <input type="range" id="fade2" min="1" max="20"> <span id="fade2v"></span><br>
+    Down Delay: <input type="range" id="dd2" min="0" max="20" step="1"> <span id="dd2v"></span><br>
+    Up Delay: <input type="range" id="du2" min="0" max="20" step="1"> <span id="du2v"></span>
   </div>
 
   <div class="channel">
     <h3>Channel 3</h3>
-    <span class="label">Min:</span>
-    <input type="range" id="min3" min="0" max="255" value="0">
-    <span id="min3v">0</span><br>
-
-    <span class="label">Max:</span>
-    <input type="range" id="max3" min="0" max="255" value="255">
-    <span id="max3v">255</span><br>
-
-    <span class="label">Fade Speed:</span>
-    <input type="range" id="fade3" min="1" max="20" value="5">
-    <span id="fade3v">5</span><br>
-
-    <span class="label">Down Delay (s):</span>
-    <input type="range" id="dd3" min="0" max="20" step="1" value="0">
-    <span id="dd3v">0.0 s</span><br>
-
-    <span class="label">Up Delay (s):</span>
-    <input type="range" id="du3" min="0" max="20" step="1" value="0">
-    <span id="du3v">0.0 s</span>
+    Min: <input type="range" id="min3" min="0" max="255"> <span id="min3v"></span><br>
+    Max: <input type="range" id="max3" min="0" max="255"> <span id="max3v"></span><br>
+    Fade: <input type="range" id="fade3" min="1" max="20"> <span id="fade3v"></span><br>
+    Down Delay: <input type="range" id="dd3" min="0" max="20" step="1"> <span id="dd3v"></span><br>
+    Up Delay: <input type="range" id="du3" min="0" max="20" step="1"> <span id="du3v"></span>
   </div>
 
   <div class="channel">
     <h3>Channel 4</h3>
-    <span class="label">Min:</span>
-    <input type="range" id="min4" min="0" max="255" value="0">
-    <span id="min4v">0</span><br>
-
-    <span class="label">Max:</span>
-    <input type="range" id="max4" min="0" max="255" value="255">
-    <span id="max4v">255</span><br>
-
-    <span class="label">Fade Speed:</span>
-    <input type="range" id="fade4" min="1" max="20" value="5">
-    <span id="fade4v">5</span><br>
-
-    <span class="label">Down Delay (s):</span>
-    <input type="range" id="dd4" min="0" max="20" step="1" value="0">
-    <span id="dd4v">0.0 s</span><br>
-
-    <span class="label">Up Delay (s):</span>
-    <input type="range" id="du4" min="0" max="20" step="1" value="0">
-    <span id="du4v">0.0 s</span>
+    Min: <input type="range" id="min4" min="0" max="255"> <span id="min4v"></span><br>
+    Max: <input type="range" id="max4" min="0" max="255"> <span id="max4v"></span><br>
+    Fade: <input type="range" id="fade4" min="1" max="20"> <span id="fade4v"></span><br>
+    Down Delay: <input type="range" id="dd4" min="0" max="20" step="1"> <span id="dd4v"></span><br>
+    Up Delay: <input type="range" id="du4" min="0" max="20" step="1"> <span id="du4v"></span>
   </div>
+
+  <button id="saveConfigButton">Save All</button>
 
 <script>
 const SERVICE_UUID               = "19b10000-e8f2-537e-4f6c-d104768a1214";
@@ -128,155 +73,12 @@ let sensorCharacteristic = null;
 let configCharacteristic = null;
 let syncCharacteristic   = null;
 
-function bindSlider(slider, label, formatter, callback) {
-  slider.addEventListener("input", () => {
-    label.innerHTML = formatter(slider.value);
-    if (callback) callback();
-  });
+function bindSlider(slider, label, formatter) {
+  slider.addEventListener("input", () => label.innerHTML = formatter(slider.value));
 }
 
-// Formatters
 function fmtInt(v) { return v; }
 function fmtFade(v) { return v; }
-function fmtDelay(v) { return (v / 10).toFixed(1) + " s"; }
+function fmtDelay(v) { return (v/10).toFixed(1) + " s"; }
 
-// Send full config packet (20 bytes) to ESP32
-function sendConfig() {
-  if (!configCharacteristic) return;
-
-  const mins  = [min1, min2, min3, min4];
-  const maxs  = [max1, max2, max3, max4];
-  const fades = [fade1, fade2, fade3, fade4];
-  const dds   = [dd1, dd2, dd3, dd4];
-  const dus   = [du1, du2, du3, du4];
-
-  const data = new Uint8Array(20);
-
-  for (let i = 0; i < 4; i++) {
-    const base = i * 5;
-    const minVal   = parseInt(mins[i].value);
-    const maxVal   = parseInt(maxs[i].value);
-    const fadeVal  = parseInt(fades[i].value);
-    const downRaw  = parseInt(dds[i].value); // 0–20 → 0.0–2.0 s
-    const upRaw    = parseInt(dus[i].value); // 0–20 → 0.0–2.0 s
-
-    data[base + 0] = minVal;
-    data[base + 1] = maxVal;
-    data[base + 2] = fadeVal;
-    data[base + 3] = downRaw;
-    data[base + 4] = upRaw;
-  }
-
-  configCharacteristic.writeValue(data.buffer).catch(e => {
-    console.error("Error writing config:", e);
-  });
-}
-
-document.getElementById("connectButton").onclick = async () => {
-  try {
-    document.getElementById("status").innerHTML = "Status: Requesting device...";
-
-    const device = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: "ESP32" }],
-      optionalServices: [SERVICE_UUID]
-    });
-
-    const server  = await device.gatt.connect();
-    const service = await server.getPrimaryService(SERVICE_UUID);
-
-    sensorCharacteristic = await service.getCharacteristic(SENSOR_CHARACTERISTIC_UUID);
-    configCharacteristic = await service.getCharacteristic(CONFIG_CHARACTERISTIC_UUID);
-    syncCharacteristic   = await service.getCharacteristic(SYNC_CHARACTERISTIC_UUID);
-
-    // Sync config from ESP32
-    const syncData = await syncCharacteristic.readValue();
-    const arr = new Uint8Array(syncData.buffer);
-
-    const mins  = [min1, min2, min3, min4];
-    const maxs  = [max1, max2, max3, max4];
-    const fades = [fade1, fade2, fade3, fade4];
-    const dds   = [dd1, dd2, dd3, dd4];
-    const dus   = [du1, du2, du3, du4];
-
-    for (let i = 0; i < 4; i++) {
-      const base = i * 5;
-      mins[i].value  = arr[base + 0];
-      maxs[i].value  = arr[base + 1];
-      fades[i].value = arr[base + 2];
-      dds[i].value   = arr[base + 3]; // 0–20
-      dus[i].value   = arr[base + 4]; // 0–20
-    }
-
-    // Update labels
-    min1v.innerHTML = fmtInt(min1.value);
-    max1v.innerHTML = fmtInt(max1.value);
-    fade1v.innerHTML = fmtFade(fade1.value);
-    dd1v.innerHTML = fmtDelay(dd1.value);
-    du1v.innerHTML = fmtDelay(du1.value);
-
-    min2v.innerHTML = fmtInt(min2.value);
-    max2v.innerHTML = fmtInt(max2.value);
-    fade2v.innerHTML = fmtFade(fade2.value);
-    dd2v.innerHTML = fmtDelay(dd2.value);
-    du2v.innerHTML = fmtDelay(du2.value);
-
-    min3v.innerHTML = fmtInt(min3.value);
-    max3v.innerHTML = fmtInt(max3.value);
-    fade3v.innerHTML = fmtFade(fade3.value);
-    dd3v.innerHTML = fmtDelay(dd3.value);
-    du3v.innerHTML = fmtDelay(du3.value);
-
-    min4v.innerHTML = fmtInt(min4.value);
-    max4v.innerHTML = fmtInt(max4.value);
-    fade4v.innerHTML = fmtFade(fade4.value);
-    dd4v.innerHTML = fmtDelay(dd4.value);
-    du4v.innerHTML = fmtDelay(du4.value);
-
-    // Bind sliders to live config updates
-    bindSlider(min1,  min1v,  fmtInt,  sendConfig);
-    bindSlider(max1,  max1v,  fmtInt,  sendConfig);
-    bindSlider(fade1, fade1v, fmtFade, sendConfig);
-    bindSlider(dd1,   dd1v,   fmtDelay, sendConfig);
-    bindSlider(du1,   du1v,   fmtDelay, sendConfig);
-
-    bindSlider(min2,  min2v,  fmtInt,  sendConfig);
-    bindSlider(max2,  max2v,  fmtInt,  sendConfig);
-    bindSlider(fade2, fade2v, fmtFade, sendConfig);
-    bindSlider(dd2,   dd2v,   fmtDelay, sendConfig);
-    bindSlider(du2,   du2v,   fmtDelay, sendConfig);
-
-    bindSlider(min3,  min3v,  fmtInt,  sendConfig);
-    bindSlider(max3,  max3v,  fmtInt,  sendConfig);
-    bindSlider(fade3, fade3v, fmtFade, sendConfig);
-    bindSlider(dd3,   dd3v,   fmtDelay, sendConfig);
-    bindSlider(du3,   du3v,   fmtDelay, sendConfig);
-
-    bindSlider(min4,  min4v,  fmtInt,  sendConfig);
-    bindSlider(max4,  max4v,  fmtInt,  sendConfig);
-    bindSlider(fade4, fade4v, fmtFade, sendConfig);
-    bindSlider(dd4,   dd4v,   fmtDelay, sendConfig);
-    bindSlider(du4,   du4v,   fmtDelay, sendConfig);
-
-    // Subscribe to brightness notifications
-    await sensorCharacteristic.startNotifications();
-    sensorCharacteristic.addEventListener("characteristicvaluechanged", event => {
-      let txt   = new TextDecoder().decode(event.target.value);
-      let parts = txt.split(",");
-      if (parts.length >= 4) {
-        b1.innerHTML = parts[0];
-        b2.innerHTML = parts[1];
-        b3.innerHTML = parts[2];
-        b4.innerHTML = parts[3];
-      }
-    });
-
-    document.getElementById("status").innerHTML = "Status: Connected";
-  } catch (e) {
-    console.error(e);
-    document.getElementById("status").innerHTML = "Status: Error connecting";
-  }
-};
-</script>
-
-</body>
-</html>
+bindSlider(min1,
