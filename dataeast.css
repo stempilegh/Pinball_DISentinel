@@ -68,17 +68,27 @@ button:active {
   border: 2px solid #00BFFF;
   color: #00BFFF;
   font-weight: 600;
-  margin-top: 10px;
+  margin-left: 10px;
   text-shadow: 0 0 4px #00BFFF;
 }
 
-/* CARD UI — metallic DE panel */
-.card {
+/* CHANNEL GRID */
+.channel-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* CHANNEL BOX — metallic DE panel */
+.channel-box {
+  width: 420px;
   background: #141416;
   border: 2px solid #2A2A2D;
   border-radius: 10px;
   padding: 20px;
-  margin-bottom: 25px;
   box-shadow: 0 0 14px rgba(0,191,255,0.25);
 }
 
