@@ -2,21 +2,16 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>ESP32 4‑Channel BLE Dashboard</title>
-  <style>
-    body { font-family: Arial; margin: 20px; }
-    input[type=range] { width: 300px; }
-    h3 { margin-bottom: 5px; }
-    .channel { margin-bottom: 15px; }
-  </style>
+  <title>GI Sentinel – Data East Edition</title>
   <link rel="stylesheet" href="dataeast.css">
 </head>
 
 <body>
-  <h1>ESP32 4‑Channel BLE Dashboard 1112</h1>
+
+  <h1>GI Sentinel – Data East Edition</h1>
 
   <button id="connectButton">Connect</button>
-  <p id="status">Status: Not connected</p>
+  <span id="status">Status: Not connected</span>
 
   <h2>Game Name</h2>
   <input type="text" id="gameName" placeholder="Enter game name">
@@ -33,45 +28,57 @@
 
   <h2>Configuration</h2>
 
-  <div class="channel">
-    <h3>Channel 1</h3>
-    Min: <input type="range" id="min1" min="0" max="255"> <span id="min1v"></span><br>
-    Max: <input type="range" id="max1" min="0" max="255"> <span id="max1v"></span><br>
-    Fade: <input type="range" id="fade1" min="1" max="20"> <span id="fade1v"></span><br>
-    Down Delay: <input type="range" id="dd1" min="0" max="20" step="1"> <span id="dd1v"></span><br>
-    Up Delay: <input type="range" id="du1" min="0" max="20" step="1"> <span id="du1v"></span>
-  </div>
+  <div class="channel-grid">
 
-  <div class="channel">
-    <h3>Channel 2</h3>
-    Min: <input type="range" id="min2" min="0" max="255"> <span id="min2v"></span><br>
-    Max: <input type="range" id="max2" min="0" max="255"> <span id="max2v"></span><br>
-    Fade: <input type="range" id="fade2" min="1" max="20"> <span id="fade2v"></span><br>
-    Down Delay: <input type="range" id="dd2" min="0" max="20" step="1"> <span id="dd2v"></span><br>
-    Up Delay: <input type="range" id="du2" min="0" max="20" step="1"> <span id="du2v"></span>
-  </div>
+    <div class="channel-box">
+      <h3>Channel 1</h3>
+      Min: <input type="range" id="min1" min="0" max="255"> <span id="min1v"></span><br>
+      Max: <input type="range" id="max1" min="0" max="255"> <span id="max1v"></span><br>
+      Fade: <input type="range" id="fade1" min="1" max="20"> <span id="fade1v"></span><br>
+      Down Delay: <input type="range" id="dd1" min="0" max="20"> <span id="dd1v"></span><br>
+      Up Delay: <input type="range" id="du1" min="0" max="20"> <span id="du1v"></span>
+    </div>
 
-  <div class="channel">
-    <h3>Channel 3</h3>
-    Min: <input type="range" id="min3" min="0" max="255"> <span id="min3v"></span><br>
-    Max: <input type="range" id="max3" min="0" max="255"> <span id="max3v"></span><br>
-    Fade: <input type="range" id="fade3" min="1" max="20"> <span id="fade3v"></span><br>
-    Down Delay: <input type="range" id="dd3" min="0" max="20" step="1"> <span id="dd3v"></span><br>
-    Up Delay: <input type="range" id="du3" min="0" max="20" step="1"> <span id="du3v"></span>
-  </div>
+    <div class="channel-box">
+      <h3>Channel 2</h3>
+      Min: <input type="range" id="min2" min="0" max="255"> <span id="min2v"></span><br>
+      Max: <input type="range" id="max2" min="0" max="255"> <span id="max2v"></span><br>
+      Fade: <input type="range" id="fade2" min="1" max="20"> <span id="fade2v"></span><br>
+      Down Delay: <input type="range" id="dd2" min="0" max="20"> <span id="dd2v"></span><br>
+      Up Delay: <input type="range" id="du2" min="0" max="20"> <span id="du2v"></span>
+    </div>
 
-  <div class="channel">
-    <h3>Channel 4</h3>
-    Min: <input type="range" id="min4" min="0" max="255"> <span id="min4v"></span><br>
-    Max: <input type="range" id="max4" min="0" max="255"> <span id="max4v"></span><br>
-    Fade: <input type="range" id="fade4" min="1" max="20"> <span id="fade4v"></span><br>
-    Down Delay: <input type="range" id="dd4" min="0" max="20" step="1"> <span id="dd4v"></span><br>
-    Up Delay: <input type="range" id="du4" min="0" max="20" step="1"> <span id="du4v"></span>
+    <div class="channel-box">
+      <h3>Channel 3</h3>
+      Min: <input type="range" id="min3" min="0" max="255"> <span id="min3v"></span><br>
+      Max: <input type="range" id="max3" min="0" max="255"> <span id="max3v"></span><br>
+      Fade: <input type="range" id="fade3" min="1" max="20"> <span id="fade3v"></span><br>
+      Down Delay: <input type="range" id="dd3" min="0" max="20"> <span id="dd3v"></span><br>
+      Up Delay: <input type="range" id="du3" min="0" max="20"> <span id="du3v"></span>
+    </div>
+
+    <div class="channel-box">
+      <h3>Channel 4</h3>
+      Min: <input type="range" id="min4" min="0" max="255"> <span id="min4v"></span><br>
+      Max: <input type="range" id="max4" min="0" max="255"> <span id="max4v"></span><br>
+      Fade: <input type="range" id="fade4" min="1" max="20"> <span id="fade4v"></span><br>
+      Down Delay: <input type="range" id="dd4" min="0" max="20"> <span id="dd4v"></span><br>
+      Up Delay: <input type="range" id="du4" min="0" max="20"> <span id="du4v"></span>
+    </div>
+
   </div>
 
   <button id="saveConfigButton">Save All</button>
 
 <script>
+/* BLE UUIDs */
+const SERVICE_UUID               = "19b10000-e8f2-537e-4f6c-d104768a1214";
+const SENSOR_CHARACTERISTIC_UUID = "19b10001-e8f2-537e-4f6c-d104768a1214";
+const CONFIG_CHARACTERISTIC_UUID = "19b10002-e8f2-537e-4f6c-d104768a1214";
+const SYNC_CHARACTERISTIC_UUID   = "19b10003-e8f2-537e-4f6c-d104768a1214";
+const NAME_CHARACTERISTIC_UUID   = "19b10004-e8f2-537e-4f6c-d104768a1214";
+const RESTART_CHARACTERISTIC_UUID = "19b10005-e8f2-537e-4f6c-d104768a1214";
+
 let device = null;
 let sensorCharacteristic = null;
 let configCharacteristic = null;
@@ -109,23 +116,24 @@ bindSlider(fade4, fade4v, v=>v);
 bindSlider(dd4, dd4v, fmtDelay);
 bindSlider(du4, du4v, fmtDelay);
 
+/* CONNECT */
 document.getElementById("connectButton").onclick = async () => {
   try {
-    document.getElementById("status").innerHTML = "Status: Requesting device...";
+    status.innerHTML = "Status: Requesting device...";
 
     device = await navigator.bluetooth.requestDevice({
       filters: [{ namePrefix: "GI-Sentinel" }],
-      optionalServices: ["19b10000-e8f2-537e-4f6c-d104768a1214"]
+      optionalServices: [SERVICE_UUID]
     });
 
     const server  = await device.gatt.connect();
-    const service = await server.getPrimaryService("19b10000-e8f2-537e-4f6c-d104768a1214");
+    const service = await server.getPrimaryService(SERVICE_UUID);
 
-    sensorCharacteristic  = await service.getCharacteristic("19b10001-e8f2-537e-4f6c-d104768a1214");
-    configCharacteristic  = await service.getCharacteristic("19b10002-e8f2-537e-4f6c-d104768a1214");
-    syncCharacteristic    = await service.getCharacteristic("19b10003-e8f2-537e-4f6c-d104768a1214");
-    nameCharacteristic    = await service.getCharacteristic("19b10004-e8f2-537e-4f6c-d104768a1214");
-    restartCharacteristic = await service.getCharacteristic("19b10005-e8f2-537e-4f6c-d104768a1214");
+    sensorCharacteristic  = await service.getCharacteristic(SENSOR_CHARACTERISTIC_UUID);
+    configCharacteristic  = await service.getCharacteristic(CONFIG_CHARACTERISTIC_UUID);
+    syncCharacteristic    = await service.getCharacteristic(SYNC_CHARACTERISTIC_UUID);
+    nameCharacteristic    = await service.getCharacteristic(NAME_CHARACTERISTIC_UUID);
+    restartCharacteristic = await service.getCharacteristic(RESTART_CHARACTERISTIC_UUID);
 
     const syncData = await syncCharacteristic.readValue();
     const arr = new Uint8Array(syncData.buffer);
@@ -165,14 +173,15 @@ document.getElementById("connectButton").onclick = async () => {
       }
     });
 
-    document.getElementById("status").innerHTML = "Status: Connected";
+    status.innerHTML = "Status: Connected";
 
   } catch (e) {
     console.error(e);
-    document.getElementById("status").innerHTML = "Status: Error connecting";
+    status.innerHTML = "Status: Error connecting";
   }
 };
 
+/* SAVE CONFIG */
 document.getElementById("saveConfigButton").onclick = async () => {
   if (!configCharacteristic) {
     alert("Not connected to ESP32");
@@ -202,6 +211,7 @@ document.getElementById("saveConfigButton").onclick = async () => {
   }
 };
 
+/* SAVE NAME */
 document.getElementById("saveNameButton").onclick = async () => {
   if (!nameCharacteristic) {
     alert("Not connected to ESP32");
@@ -217,6 +227,7 @@ document.getElementById("saveNameButton").onclick = async () => {
   }
 };
 
+/* RESTART */
 document.getElementById("restartButton").onclick = async () => {
   if (!restartCharacteristic) {
     alert("Not connected to ESP32");
@@ -226,7 +237,6 @@ document.getElementById("restartButton").onclick = async () => {
   try {
     await restartCharacteristic.writeValue(new Uint8Array([1]));
 
-    // Reload page after ESP32 reboots
     setTimeout(() => {
       location.reload();
     }, 150);
