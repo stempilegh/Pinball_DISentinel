@@ -12,7 +12,7 @@
 </head>
 
 <body>
-  <h1>ESP32 4‑Channel BLE Dashboard 1034</h1>
+  <h1>ESP32 4‑Channel BLE Dashboard</h1>
 
   <button id="connectButton">Connect</button>
   <p id="status">Status: Not connected</p>
@@ -230,7 +230,42 @@ document.getElementById("restartButton").onclick = async () => {
 
   try {
     await restartCharacteristic.writeValue(new Uint8Array([1]));
-    alert("ESP32 restarting… reconnect in a few seconds.");
+
+    document.getElementById("status").innerHTML = "Status: Not connected";
+
+    try { sensorCharacteristic.stopNotifications(); } catch(e) {}
+
+    b1.innerHTML = "---";
+    b2.innerHTML = "---";
+    b3.innerHTML = "---";
+    b4.innerHTML = "---";
+
+    const sliders = [
+      min1, max1, fade1, dd1, du1,
+      min2, max2, fade2, dd2, du2,
+      min3, max3, fade3, dd3, du3,
+      min4, max4, fade4, dd4, du4
+    ];
+    sliders.forEach(s => s.value = 0);
+
+    const labels = [
+      min1v, max1v, fade1v, dd1v, du1v,
+      min2v, max2v, fade2v, dd2v, du2v,
+      min3v, max3v, fade3v, dd3v, du3v,
+      min4v, max4v, fade4v, dd4v, du4v
+    ];
+    labels.forEach(l => l.innerHTML = "");
+
+    gameName.value = "";
+
+    sensorCharacteristic  = null;
+    configCharacteristic  = null;
+    syncCharacteristic    = null;
+    nameCharacteristic    = null;
+    restartCharacteristic = null;
+
+    alert("ESP32 restarting… reconnect when ready.");
+
   } catch (e) {
     console.error("Restart failed:", e);
   }
