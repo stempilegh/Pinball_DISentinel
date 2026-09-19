@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>ESP32 4‑Channel BLE Dashboard</title>
+  <title>ESP32 4‑Channel BLE Dashboard 10:15</title>
   <style>
     body { font-family: Arial; margin: 20px; }
     input[type=range] { width: 300px; }
@@ -73,12 +73,123 @@ let sensorCharacteristic = null;
 let configCharacteristic = null;
 let syncCharacteristic   = null;
 
+function fmtDelay(v) { return (v/10).toFixed(1) + " s"; }
+
 function bindSlider(slider, label, formatter) {
   slider.addEventListener("input", () => label.innerHTML = formatter(slider.value));
 }
 
-function fmtInt(v) { return v; }
-function fmtFade(v) { return v; }
-function fmtDelay(v) { return (v/10).toFixed(1) + " s"; }
+bindSlider(min1, min1v, v=>v);
+bindSlider(max1, max1v, v=>v);
+bindSlider(fade1, fade1v, v=>v);
+bindSlider(dd1, dd1v, fmtDelay);
+bindSlider(du1, du1v, fmtDelay);
 
-bindSlider(min1,
+bindSlider(min2, min2v, v=>v);
+bindSlider(max2, max2v, v=>v);
+bindSlider(fade2, fade2v, v=>v);
+bindSlider(dd2, dd2v, fmtDelay);
+bindSlider(du2, du2v, fmtDelay);
+
+bindSlider(min3, min3v, v=>v);
+bindSlider(max3, max3v, v=>v);
+bindSlider(fade3, fade3v, v=>v);
+bindSlider(dd3, dd3v, fmtDelay);
+bindSlider(du3, du3v, fmtDelay);
+
+bindSlider(min4, min4v, v=>v);
+bindSlider(max4, max4v, v=>v);
+bindSlider(fade4, fade4v, v=>v);
+bindSlider(dd4, dd4v, fmtDelay);
+bindSlider(du4, du4v, fmtDelay);
+
+document.getElementById("connectButton").onclick = async () => {
+  try {
+    document.getElementById("status").innerHTML = "Status: Requesting device...";
+
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: "ESP32" }],
+      optionalServices: [SERVICE_UUID]
+    });
+
+    const server  = await device.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE_UUID);
+
+    sensorCharacteristic = await service.getCharacteristic(SENSOR_CHARACTERISTIC_UUID);
+    configCharacteristic = await service.getCharacteristic(CONFIG_CHARACTERISTIC_UUID);
+    syncCharacteristic   = await service.getCharacteristic(SYNC_CHARACTERISTIC_UUID);
+
+    const syncData = await syncCharacteristic.readValue();
+    const arr = new Uint8Array(syncData.buffer);
+
+    function loadChannel(i, min, max, fade, dd, du) {
+      min.value = arr[i*5 + 0];
+      max.value = arr[i*5 + 1];
+      fade.value = arr[i*5 + 2];
+      dd.value = arr[i*5 + 3];
+      du.value = arr[i*5 + 4];
+
+      min.nextElementSibling.innerHTML = min.value;
+      max.nextElementSibling.innerHTML = max.value;
+      fade.nextElementSibling.innerHTML = fade.value;
+      dd.nextElementSibling.innerHTML = fmtDelay(dd.value);
+      du.nextElementSibling.innerHTML = fmtDelay(du.value);
+    }
+
+    loadChannel(0, min1, max1, fade1, dd1, du1);
+    loadChannel(1, min2, max2, fade2, dd2, du2);
+    loadChannel(2, min3, max3, fade3, dd3, du3);
+    loadChannel(3, min4, max4, fade4, dd4, du4);
+
+    await sensorCharacteristic.startNotifications();
+    sensorCharacteristic.addEventListener("characteristicvaluechanged", event => {
+      let txt = new TextDecoder().decode(event.target.value);
+      let parts = txt.split(",");
+      if (parts.length >= 4) {
+        b1.innerHTML = parts[0];
+        b2.innerHTML = parts[1];
+        b3.innerHTML = parts[2];
+        b4.innerHTML = parts[3];
+      }
+    });
+
+    document.getElementById("status").innerHTML = "Status: Connected";
+
+  } catch (e) {
+    console.error(e);
+    document.getElementById("status").innerHTML = "Status: Error connecting";
+  }
+};
+
+document.getElementById("saveConfigButton").onclick = async () => {
+  if (!configCharacteristic) {
+    alert("Not connected to ESP32");
+    return;
+  }
+
+  const data = new Uint8Array(20);
+
+  function saveChannel(i, min, max, fade, dd, du) {
+    const base = i*5;
+    data[base + 0] = parseInt(min.value);
+    data[base + 1] = parseInt(max.value);
+    data[base + 2] = parseInt(fade.value);
+    data[base + 3] = parseInt(dd.value);
+    data[base + 4] = parseInt(du.value);
+  }
+
+  saveChannel(0, min1, max1, fade1, dd1, du1);
+  saveChannel(1, min2, max2, fade2, dd2, du2);
+  saveChannel(2, min3, max3, fade3, dd3, du3);
+  saveChannel(3, min4, max4, fade4, dd4, du4);
+
+  try {
+    await configCharacteristic.writeValue(data.buffer);
+  } catch (e) {
+    console.error("Error writing config:", e);
+  }
+};
+</script>
+
+</body>
+</html>
