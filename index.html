@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>ESP32 4‑Channel BLE Dashboard 10:15</title>
+  <title>ESP32 4‑Channel BLE Dashboard</title>
   <style>
     body { font-family: Arial; margin: 20px; }
     input[type=range] { width: 300px; }
@@ -12,10 +12,17 @@
 </head>
 
 <body>
-  <h1>ESP32 4‑Channel BLE Dashboard</h1>
+  <h1>ESP32 4‑Channel BLE Dashboard 1034</h1>
 
   <button id="connectButton">Connect</button>
   <p id="status">Status: Not connected</p>
+
+  <h2>Game Name</h2>
+  <input type="text" id="gameName" placeholder="Enter game name">
+  <button id="saveNameButton">Save Name</button>
+
+  <h2>System</h2>
+  <button id="restartButton">Restart ESP32</button>
 
   <h2>Current Brightness</h2>
   <p>CH1: <span id="b1">---</span></p>
@@ -68,10 +75,14 @@ const SERVICE_UUID               = "19b10000-e8f2-537e-4f6c-d104768a1214";
 const SENSOR_CHARACTERISTIC_UUID = "19b10001-e8f2-537e-4f6c-d104768a1214";
 const CONFIG_CHARACTERISTIC_UUID = "19b10002-e8f2-537e-4f6c-d104768a1214";
 const SYNC_CHARACTERISTIC_UUID   = "19b10003-e8f2-537e-4f6c-d104768a1214";
+const NAME_CHARACTERISTIC_UUID   = "19b10004-e8f2-537e-4f6c-d104768a1214";
+const RESTART_CHARACTERISTIC_UUID = "19b10005-e8f2-537e-4f6c-d104768a1214";
 
 let sensorCharacteristic = null;
 let configCharacteristic = null;
 let syncCharacteristic   = null;
+let nameCharacteristic   = null;
+let restartCharacteristic = null;
 
 function fmtDelay(v) { return (v/10).toFixed(1) + " s"; }
 
@@ -108,38 +119,44 @@ document.getElementById("connectButton").onclick = async () => {
     document.getElementById("status").innerHTML = "Status: Requesting device...";
 
     const device = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: "ESP32" }],
+      filters: [{ namePrefix: "GI-Sentinel" }],
       optionalServices: [SERVICE_UUID]
     });
 
     const server  = await device.gatt.connect();
     const service = await server.getPrimaryService(SERVICE_UUID);
 
-    sensorCharacteristic = await service.getCharacteristic(SENSOR_CHARACTERISTIC_UUID);
-    configCharacteristic = await service.getCharacteristic(CONFIG_CHARACTERISTIC_UUID);
-    syncCharacteristic   = await service.getCharacteristic(SYNC_CHARACTERISTIC_UUID);
+    sensorCharacteristic  = await service.getCharacteristic(SENSOR_CHARACTERISTIC_UUID);
+    configCharacteristic  = await service.getCharacteristic(CONFIG_CHARACTERISTIC_UUID);
+    syncCharacteristic    = await service.getCharacteristic(SYNC_CHARACTERISTIC_UUID);
+    nameCharacteristic    = await service.getCharacteristic(NAME_CHARACTERISTIC_UUID);
+    restartCharacteristic = await service.getCharacteristic(RESTART_CHARACTERISTIC_UUID);
 
     const syncData = await syncCharacteristic.readValue();
     const arr = new Uint8Array(syncData.buffer);
 
     function loadChannel(i, min, max, fade, dd, du) {
-      min.value = arr[i*5 + 0];
-      max.value = arr[i*5 + 1];
+      min.value  = arr[i*5 + 0];
+      max.value  = arr[i*5 + 1];
       fade.value = arr[i*5 + 2];
-      dd.value = arr[i*5 + 3];
-      du.value = arr[i*5 + 4];
+      dd.value   = arr[i*5 + 3];
+      du.value   = arr[i*5 + 4];
 
-      min.nextElementSibling.innerHTML = min.value;
-      max.nextElementSibling.innerHTML = max.value;
+      min.nextElementSibling.innerHTML  = min.value;
+      max.nextElementSibling.innerHTML  = max.value;
       fade.nextElementSibling.innerHTML = fade.value;
-      dd.nextElementSibling.innerHTML = fmtDelay(dd.value);
-      du.nextElementSibling.innerHTML = fmtDelay(du.value);
+      dd.nextElementSibling.innerHTML   = fmtDelay(dd.value);
+      du.nextElementSibling.innerHTML   = fmtDelay(du.value);
     }
 
     loadChannel(0, min1, max1, fade1, dd1, du1);
     loadChannel(1, min2, max2, fade2, dd2, du2);
     loadChannel(2, min3, max3, fade3, dd3, du3);
     loadChannel(3, min4, max4, fade4, dd4, du4);
+
+    const nameData = await nameCharacteristic.readValue();
+    const decoder = new TextDecoder();
+    gameName.value = decoder.decode(nameData);
 
     await sensorCharacteristic.startNotifications();
     sensorCharacteristic.addEventListener("characteristicvaluechanged", event => {
@@ -187,6 +204,35 @@ document.getElementById("saveConfigButton").onclick = async () => {
     await configCharacteristic.writeValue(data.buffer);
   } catch (e) {
     console.error("Error writing config:", e);
+  }
+};
+
+document.getElementById("saveNameButton").onclick = async () => {
+  if (!nameCharacteristic) {
+    alert("Not connected to ESP32");
+    return;
+  }
+
+  try {
+    const encoder = new TextEncoder();
+    await nameCharacteristic.writeValue(encoder.encode(gameName.value));
+    alert("Game name saved. Restart ESP32 to update BLE name.");
+  } catch (e) {
+    console.error("Error writing name:", e);
+  }
+};
+
+document.getElementById("restartButton").onclick = async () => {
+  if (!restartCharacteristic) {
+    alert("Not connected to ESP32");
+    return;
+  }
+
+  try {
+    await restartCharacteristic.writeValue(new Uint8Array([1]));
+    alert("ESP32 restarting… reconnect in a few seconds.");
+  } catch (e) {
+    console.error("Restart failed:", e);
   }
 };
 </script>
