@@ -1,135 +1,330 @@
-/* ===== DATA EAST RETRO-TECH UI ===== */
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+#include <Preferences.h>
+#include <esp_system.h>   // required for esp_restart()
 
-body {
-  background: #0A0A0C;
-  color: #F2F2F2;
-  font-family: "Orbitron", "Share Tech Mono", "Courier New", monospace;
-  margin: 0;
-  padding: 20px;
-  letter-spacing: 0.4px;
+#define LEDC_TIMER_12_BIT  12
+#define LEDC_BASE_FREQ     5000
+
+#define LED_PIN_1  1
+#define LED_PIN_2  2
+#define LED_PIN_3  3
+#define LED_PIN_4  4
+
+#define BUTTON_PIN 0
+
+#define SERVICE_UUID               "19b10000-e8f2-537e-4f6c-d104768a1214"
+#define SENSOR_CHARACTERISTIC_UUID "19b10001-e8f2-537e-4f6c-d104768a1214"
+#define CONFIG_CHARACTERISTIC_UUID "19b10002-e8f2-537e-4f6c-d104768a1214"
+#define SYNC_CHARACTERISTIC_UUID   "19b10003-e8f2-537e-4f6c-d104768a1214"
+#define NAME_CHARACTERISTIC_UUID   "19b10004-e8f2-537e-4f6c-d104768a1214"
+#define RESTART_CHARACTERISTIC_UUID "19b10005-e8f2-537e-4f6c-d104768a1214"
+
+BLEServer*         pServer               = nullptr;
+BLECharacteristic* pSensorCharacteristic = nullptr;
+BLECharacteristic* pConfigCharacteristic = nullptr;
+BLECharacteristic* pSyncCharacteristic   = nullptr;
+BLECharacteristic* pNameCharacteristic   = nullptr;
+BLECharacteristic* pRestartCharacteristic = nullptr;
+BLEDescriptor*     sensorCCCD            = nullptr;
+
+bool deviceConnected     = false;
+bool oldDeviceConnected  = false;
+
+Preferences prefs;
+
+String gameName = "Unknown";
+
+// 4 channels
+uint8_t  min_bright[4]   = {0,0,0,0};
+uint8_t  max_bright[4]   = {255,255,255,255};
+uint8_t  fadeSpeed[4]    = {5,5,5,5};
+uint16_t brightness[4]   = {255,255,255,255};
+
+// delays (seconds)
+float    downDelay[4]    = {0,0,0,0};
+float    upDelay[4]      = {0,0,0,0};
+
+// fade state
+bool     fadingDown[4]      = {false,false,false,false};
+bool     fadingUp[4]        = {false,false,false,false};
+bool     downDelayActive[4] = {false,false,false,false};
+bool     upDelayActive[4]   = {false,false,false,false};
+
+unsigned long downStartTime[4] = {0,0,0,0};
+unsigned long upStartTime[4]   = {0,0,0,0};
+
+bool buttonState     = false;
+bool lastButtonState = false;
+
+unsigned long lastUpdate = 0;
+unsigned long lastNotify = 0;
+const unsigned long notifyInterval = 50;
+
+void ledcAnalogWrite(uint8_t pin, uint32_t value, uint32_t valueMax = 255) {
+  uint32_t duty = (4095 / valueMax) * min(value, valueMax);
+  ledcWrite(pin, duty);
 }
 
-/* CRT scanline overlay */
-body::before {
-  content: "";
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  pointer-events: none;
-  background: repeating-linear-gradient(
-    to bottom,
-    rgba(255,255,255,0.03),
-    rgba(255,255,255,0.03) 2px,
-    transparent 2px,
-    transparent 4px
+class MyServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer* pServer) override { deviceConnected = true; }
+  void onDisconnect(BLEServer* pServer) override { deviceConnected = false; }
+};
+
+class MyConfigCallbacks : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic* characteristic) override {
+
+    sensorCCCD->setValue((uint8_t*)"\x00\x00", 2);
+
+    String v = characteristic->getValue();
+    if (v.length() < 20) {
+      sensorCCCD->setValue((uint8_t*)"\x01\x00", 2);
+      return;
+    }
+
+    for (int i = 0; i < 4; i++) {
+      int base = i * 5;
+
+      min_bright[i] = (uint8_t)v[base + 0];
+      max_bright[i] = (uint8_t)v[base + 1];
+      fadeSpeed[i]  = (uint8_t)v[base + 2];
+
+      uint8_t ddRaw = (uint8_t)v[base + 3];
+      uint8_t duRaw = (uint8_t)v[base + 4];
+
+      downDelay[i] = ddRaw / 10.0f;
+      upDelay[i]   = duRaw / 10.0f;
+
+      if (min_bright[i] > max_bright[i]) {
+        uint8_t t = min_bright[i];
+        min_bright[i] = max_bright[i];
+        max_bright[i] = t;
+      }
+
+      if (brightness[i] < min_bright[i]) brightness[i] = min_bright[i];
+      if (brightness[i] > max_bright[i]) brightness[i] = max_bright[i];
+
+      prefs.putUChar((String("min")   + i).c_str(), min_bright[i]);
+      prefs.putUChar((String("max")   + i).c_str(), max_bright[i]);
+      prefs.putUChar((String("fade")  + i).c_str(), fadeSpeed[i]);
+      prefs.putFloat((String("ddown") + i).c_str(), downDelay[i]);
+      prefs.putFloat((String("dup")   + i).c_str(), upDelay[i]);
+    }
+
+    sensorCCCD->setValue((uint8_t*)"\x01\x00", 2);
+  }
+};
+
+class MyNameCallbacks : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic* characteristic) override {
+    String v = characteristic->getValue();
+    gameName = v;
+    prefs.putString("gamename", gameName);
+  }
+};
+
+class MyRestartCallbacks : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic* characteristic) override {
+    esp_restart();   // guaranteed to exist on all ESP32 variants
+  }
+};
+
+void setup() {
+  Serial.begin(115200);
+  delay(200);
+
+  prefs.begin("ledcfg", false);
+
+  gameName = prefs.getString("gamename", "Unknown");
+
+  for (int i = 0; i < 4; i++) {
+    min_bright[i] = prefs.getUChar((String("min")   + i).c_str(), 0);
+    max_bright[i] = prefs.getUChar((String("max")   + i).c_str(), 255);
+    fadeSpeed[i]  = prefs.getUChar((String("fade")  + i).c_str(), 5);
+    downDelay[i]  = prefs.getFloat((String("ddown") + i).c_str(), 0.0f);
+    upDelay[i]    = prefs.getFloat((String("dup")   + i).c_str(), 0.0f);
+    brightness[i] = max_bright[i];
+  }
+
+  ledcAttach(LED_PIN_1, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
+  ledcAttach(LED_PIN_2, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
+  ledcAttach(LED_PIN_3, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
+  ledcAttach(LED_PIN_4, LEDC_BASE_FREQ, LEDC_TIMER_12_BIT);
+
+  pinMode(BUTTON_PIN, INPUT);
+
+  String bleName = "GI-Sentinel: " + gameName;
+  BLEDevice::init(bleName.c_str());
+
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+
+  BLEService* pService = pServer->createService(SERVICE_UUID);
+
+  pSensorCharacteristic = pService->createCharacteristic(
+    SENSOR_CHARACTERISTIC_UUID,
+    BLECharacteristic::PROPERTY_READ |
+    BLECharacteristic::PROPERTY_NOTIFY
   );
-  z-index: 9999;
+
+  sensorCCCD = new BLE2902();
+  pSensorCharacteristic->addDescriptor(sensorCCCD);
+
+  pConfigCharacteristic = pService->createCharacteristic(
+    CONFIG_CHARACTERISTIC_UUID,
+    BLECharacteristic::PROPERTY_WRITE
+  );
+
+  uint8_t initValue[20];
+  for (int i = 0; i < 4; i++) {
+    int base = i * 5;
+    initValue[base + 0] = min_bright[i];
+    initValue[base + 1] = max_bright[i];
+    initValue[base + 2] = fadeSpeed[i];
+    initValue[base + 3] = (uint8_t)(downDelay[i] * 10.0f);
+    initValue[base + 4] = (uint8_t)(upDelay[i]   * 10.0f);
+  }
+  pConfigCharacteristic->setValue(initValue, 20);
+  pConfigCharacteristic->setCallbacks(new MyConfigCallbacks());
+  pConfigCharacteristic->addDescriptor(new BLE2902());
+
+  pSyncCharacteristic = pService->createCharacteristic(
+    SYNC_CHARACTERISTIC_UUID,
+    BLECharacteristic::PROPERTY_READ
+  );
+
+  pNameCharacteristic = pService->createCharacteristic(
+    NAME_CHARACTERISTIC_UUID,
+    BLECharacteristic::PROPERTY_READ |
+    BLECharacteristic::PROPERTY_WRITE
+  );
+
+  //pNameCharacteristic->setMaxLen(64);   // FIX: allow long game names
+  pNameCharacteristic->setValue(gameName.c_str());
+  pNameCharacteristic->setCallbacks(new MyNameCallbacks());
+
+  pRestartCharacteristic = pService->createCharacteristic(
+    RESTART_CHARACTERISTIC_UUID,
+    BLECharacteristic::PROPERTY_WRITE
+  );
+  pRestartCharacteristic->setCallbacks(new MyRestartCallbacks());
+
+  pService->start();
+
+  BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  BLEDevice::startAdvertising();
 }
 
-/* HEADERS */
-h1, h2, h3 {
-  font-weight: 700;
-  color: #00BFFF;
-  text-shadow: 0 0 8px #00BFFF, 0 0 2px #0077AA;
-  margin-bottom: 12px;
+void updateButtonLogic(unsigned long now) {
+  bool pressed = (digitalRead(BUTTON_PIN) == LOW);
+  buttonState = pressed;
+
+  if (buttonState && !lastButtonState) {
+    for (int i = 0; i < 4; i++) {
+      downStartTime[i]   = now;
+      downDelayActive[i] = true;
+      fadingUp[i]        = false;
+    }
+  }
+
+  if (!buttonState && lastButtonState) {
+    for (int i = 0; i < 4; i++) {
+      upStartTime[i]     = now;
+      upDelayActive[i]   = true;
+      fadingDown[i]      = false;
+    }
+  }
+
+  lastButtonState = buttonState;
+
+  for (int i = 0; i < 4; i++) {
+    if (downDelayActive[i] && (now - downStartTime[i] >= (unsigned long)(downDelay[i] * 1000))) {
+      downDelayActive[i] = false;
+      fadingDown[i]      = true;
+    }
+    if (upDelayActive[i] && (now - upStartTime[i] >= (unsigned long)(upDelay[i] * 1000))) {
+      upDelayActive[i] = false;
+      fadingUp[i]      = true;
+    }
+  }
+
+  for (int i = 0; i < 4; i++) {
+    uint16_t step = (21 - fadeSpeed[i]);  // inverted fade speed
+
+    if (fadingDown[i]) {
+      if (brightness[i] > min_bright[i]) {
+        if (brightness[i] > min_bright[i] + step) {
+          brightness[i] -= step;
+        } else {
+          brightness[i] = min_bright[i];
+          fadingDown[i] = false;
+        }
+      } else {
+        fadingDown[i] = false;
+      }
+    }
+
+    if (fadingUp[i]) {
+      if (brightness[i] < max_bright[i]) {
+        if (brightness[i] + step < max_bright[i]) {
+          brightness[i] += step;
+        } else {
+          brightness[i] = max_bright[i];
+          fadingUp[i] = false;
+        }
+      } else {
+        fadingUp[i] = false;
+      }
+    }
+  }
 }
 
-/* BUTTONS */
-button {
-  background: #111;
-  color: #FFD24C;
-  padding: 10px 20px;
-  border: 3px solid #FFD24C;
-  border-radius: 6px;
-  font-size: 15px;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
-  text-shadow: 0 0 4px #FFD24C;
-}
+void loop() {
+  unsigned long now = millis();
 
-button:hover {
-  background: #2A1F00;
-  box-shadow: 0 0 12px #FFD24C;
-}
+  if (now - lastUpdate >= 5) {
+    lastUpdate = now;
 
-button:active {
-  transform: scale(0.96);
-}
+    updateButtonLogic(now);
 
-/* STATUS BADGE */
-#status {
-  display: inline-block;
-  padding: 8px 14px;
-  border-radius: 6px;
-  background: #111;
-  border: 2px solid #00BFFF;
-  color: #00BFFF;
-  font-weight: 600;
-  margin-left: 10px;
-  text-shadow: 0 0 4px #00BFFF;
-}
+    ledcAnalogWrite(LED_PIN_1, brightness[0]);
+    ledcAnalogWrite(LED_PIN_2, brightness[1]);
+    ledcAnalogWrite(LED_PIN_3, brightness[2]);
+    ledcAnalogWrite(LED_PIN_4, brightness[3]);
+  }
 
-/* GRID LAYOUT */
-.channel-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
-  justify-content: center;
-  max-width: 900px;
-  margin: 0 auto;
-}
+  if (deviceConnected && (now - lastNotify >= notifyInterval)) {
+    lastNotify = now;
 
-/* CHANNEL BOX */
-.channel-box {
-  width: 420px;
-  background: #141416;
-  border: 2px solid #2A2A2D;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 0 14px rgba(0,191,255,0.25);
-}
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%u,%u,%u,%u",
+             brightness[0], brightness[1], brightness[2], brightness[3]);
 
-/* SLIDERS */
-input[type=range] {
-  -webkit-appearance: none;
-  width: 100%;
-  height: 6px;
-  background: #1A1A1C;
-  border-radius: 3px;
-  outline: none;
-  margin: 8px 0 4px 0;
-  box-shadow: inset 0 0 6px rgba(0,191,255,0.25);
-}
+    pSensorCharacteristic->setValue(buf);
+    pSensorCharacteristic->notify();
+  }
 
-input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  background: #00BFFF;
-  border-radius: 50%;
-  cursor: pointer;
-  box-shadow: 0 0 10px #00BFFF;
-  transition: background 0.2s, transform 0.1s;
-}
+  if (!deviceConnected && oldDeviceConnected) {
+    delay(500);
+    pServer->startAdvertising();
+    oldDeviceConnected = deviceConnected;
+  }
 
-input[type=range]::-webkit-slider-thumb:hover {
-  background: #66DFFF;
-}
+  if (deviceConnected && !oldDeviceConnected) {
+    oldDeviceConnected = deviceConnected;
 
-input[type=range]::-webkit-slider-thumb:active {
-  transform: scale(0.9);
+    uint8_t syncPacket[20];
+    for (int i = 0; i < 4; i++) {
+      int base = i * 5;
+      syncPacket[base + 0] = min_bright[i];
+      syncPacket[base + 1] = max_bright[i];
+      syncPacket[base + 2] = fadeSpeed[i];
+      syncPacket[base + 3] = (uint8_t)(downDelay[i] * 10.0f);
+      syncPacket[base + 4] = (uint8_t)(upDelay[i]   * 10.0f);
+    }
+    pSyncCharacteristic->setValue(syncPacket, 20);
+  }
 }
-
-/* LABELS */
-label, span {
-  font-size: 14px;
-  color: #FFD24C;
-  text-shadow: 0 0 4px rgba(255,210,76,0.25);
-}
-
-/* TEXT INPUT */
-input[type=text] {
-  background: #111;
-  border: 2px solid #FFD
