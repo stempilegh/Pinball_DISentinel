@@ -12,7 +12,7 @@
 </head>
 
 <body>
-  <h1>ESP32 4‑Channel BLE Dashboard 1103</h1>
+  <h1>ESP32 4‑Channel BLE Dashboard 1106</h1>
 
   <button id="connectButton">Connect</button>
   <p id="status">Status: Not connected</p>
@@ -71,13 +71,6 @@
   <button id="saveConfigButton">Save All</button>
 
 <script>
-const SERVICE_UUID               = "19b10000-e8f2-537e-4f6c-d104768a1214";
-const SENSOR_CHARACTERISTIC_UUID = "19b10001-e8f2-537e-4f6c-d104768a1214";
-const CONFIG_CHARACTERISTIC_UUID = "19b10002-e8f2-537e-4f6c-d104768a1214";
-const SYNC_CHARACTERISTIC_UUID   = "19b10003-e8f2-537e-4f6c-d104768a1214";
-const NAME_CHARACTERISTIC_UUID   = "19b10004-e8f2-537e-4f6c-d104768a1214";
-const RESTART_CHARACTERISTIC_UUID = "19b10005-e8f2-537e-4f6c-d104768a1214";
-
 let device = null;
 let sensorCharacteristic = null;
 let configCharacteristic = null;
@@ -154,21 +147,17 @@ document.getElementById("connectButton").onclick = async () => {
 
     device = await navigator.bluetooth.requestDevice({
       filters: [{ namePrefix: "GI-Sentinel" }],
-      optionalServices: [SERVICE_UUID]
-    });
-
-    device.addEventListener("gattserverdisconnected", () => {
-      clearUI();
+      optionalServices: ["19b10000-e8f2-537e-4f6c-d104768a1214"]
     });
 
     const server  = await device.gatt.connect();
-    const service = await server.getPrimaryService(SERVICE_UUID);
+    const service = await server.getPrimaryService("19b10000-e8f2-537e-4f6c-d104768a1214");
 
-    sensorCharacteristic  = await service.getCharacteristic(SENSOR_CHARACTERISTIC_UUID);
-    configCharacteristic  = await service.getCharacteristic(CONFIG_CHARACTERISTIC_UUID);
-    syncCharacteristic    = await service.getCharacteristic(SYNC_CHARACTERISTIC_UUID);
-    nameCharacteristic    = await service.getCharacteristic(NAME_CHARACTERISTIC_UUID);
-    restartCharacteristic = await service.getCharacteristic(RESTART_CHARACTERISTIC_UUID);
+    sensorCharacteristic  = await service.getCharacteristic("19b10001-e8f2-537e-4f6c-d104768a1214");
+    configCharacteristic  = await service.getCharacteristic("19b10002-e8f2-537e-4f6c-d104768a1214");
+    syncCharacteristic    = await service.getCharacteristic("19b10003-e8f2-537e-4f6c-d104768a1214");
+    nameCharacteristic    = await service.getCharacteristic("19b10004-e8f2-537e-4f6c-d104768a1214");
+    restartCharacteristic = await service.getCharacteristic("19b10005-e8f2-537e-4f6c-d104768a1214");
 
     const syncData = await syncCharacteristic.readValue();
     const arr = new Uint8Array(syncData.buffer);
@@ -268,7 +257,16 @@ document.getElementById("restartButton").onclick = async () => {
 
   try {
     await restartCharacteristic.writeValue(new Uint8Array([1]));
-    alert("ESP32 restarting… dashboard will reset when BLE disconnects.");
+
+    // FORCE DISCONNECT
+    if (device && device.gatt.connected) {
+      await device.gatt.disconnect();
+    }
+
+    // CLEAN UI
+    clearUI();
+
+    alert("ESP32 restarting… reconnect when ready.");
 
   } catch (e) {
     console.error("Restart failed:", e);
