@@ -1,4 +1,4 @@
-/* ===== GI Sentinel Layout ===== */
+/* ===== GI Sentinel – Data East Edition ===== */
 
 body {
   background: #0A0A0C;
@@ -29,7 +29,7 @@ body::before {
 /* ===== GRID STRUCTURE ===== */
 .dashboard {
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto auto auto auto;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
   max-width: 1100px;
@@ -48,7 +48,8 @@ body::before {
   box-shadow: 0 0 10px rgba(0,191,255,0.3);
 }
 
-.header-left, .header-right {
+.header-left,
+.header-right {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -150,4 +151,55 @@ input[type=range] {
   -webkit-appearance: none;
   width: 100%;
   height: 6px;
-  background: #1
+  background: #1A1A1C;
+  border-radius: 3px;
+  outline: none;
+  margin: 8px 0 4px 0;
+  box-shadow: inset 0 0 6px rgba(0,191,255,0.25);
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  background: #00BFFF;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px #00BFFF;
+  transition: background 0.2s, transform 0.1s;
+}
+
+input[type=range]::-webkit-slider-thumb:hover {
+  background: #66DFFF;
+}
+
+input[type=range]::-webkit-slider-thumb:active {
+  transform: scale(0.9);
+}
+
+/* ===== TEXT INPUT ===== */
+input[type=text] {
+  background: #111;
+  border: 2px solid #FFD24C;
+  color: #F2F2F2;
+  padding: 8px 12px;
+  border-radius: 6px;
+  width: 260px;
+  font-size: 15px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  text-shadow: 0 0 4px rgba(255,210,76,0.25);
+}
+
+input[type=text]:focus {
+  border-color: #FFE38A;
+  box-shadow: 0 0 10px #FFD24C;
+  outline: none;
+}
+
+/* ===== FOOTER ===== */
+.footer {
+  grid-column: 1 / 3;
+  display: flex;
+  justify-content: center;
+  padding: 10px;
+}
