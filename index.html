@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GI Sentinel – Data East Edition</title>
   <link rel="stylesheet" href="layout.css">
 </head>
@@ -14,13 +15,14 @@
       <div class="header-left">
         <h1>GI Sentinel</h1>
         <button id="connectButton">Connect</button>
-        <span id="status">Status: Not connected</span>
+        <!-- FIX: was id="status" (collides with window.status, see notes) -->
+        <span id="statusText">Status: Not connected</span>
         <p class="brand">StempleLABS ©2026</p>
       </div>
 
       <div class="header-right">
         <label for="gameName">Game Name</label>
-        <input type="text" id="gameName" placeholder="Enter game name">
+        <input type="text" id="gameName" placeholder="Enter game name" maxlength="32">
         <button id="saveNameButton">Save</button>
         <label>System</label>
         <button id="restartButton">Restart</button>
@@ -179,6 +181,7 @@
         </div>
       </div>
 
+
     </div>
 
     <!-- FOOTER -->
@@ -188,175 +191,276 @@
 
   </div>
 
-<!-- ⭐ FULL WORKING JS (embedded) -->
 <script>
-const SERVICE_UUID               = "19b10000-e8f2-537e-4f6c-d104768a1214";
-const SENSOR_CHARACTERISTIC_UUID = "19b10001-e8f2-537e-4f6c-d104768a1214";
-const CONFIG_CHARACTERISTIC_UUID = "19b10002-e8f2-537e-4f6c-d104768a1214";
-const SYNC_CHARACTERISTIC_UUID   = "19b10003-e8f2-537e-4f6c-d104768a1214";
-const NAME_CHARACTERISTIC_UUID   = "19b10004-e8f2-537e-4f6c-d104768a1214";
+// ---------------------------------------------------------------------------
+// Settings
+// ---------------------------------------------------------------------------
+const LIVE_UPDATE      = true;  // send config to the board while sliders move (board saves to flash 2s after you stop)
+const LIVE_DEBOUNCE_MS = 120;
+
+const SERVICE_UUID                = "19b10000-e8f2-537e-4f6c-d104768a1214";
+const SENSOR_CHARACTERISTIC_UUID  = "19b10001-e8f2-537e-4f6c-d104768a1214";
+const CONFIG_CHARACTERISTIC_UUID  = "19b10002-e8f2-537e-4f6c-d104768a1214";
+const SYNC_CHARACTERISTIC_UUID    = "19b10003-e8f2-537e-4f6c-d104768a1214";
+const NAME_CHARACTERISTIC_UUID    = "19b10004-e8f2-537e-4f6c-d104768a1214";
 const RESTART_CHARACTERISTIC_UUID = "19b10005-e8f2-537e-4f6c-d104768a1214";
+const TEST_CHARACTERISTIC_UUID    = "19b10006-e8f2-537e-4f6c-d104768a1214";
 
+const CHANNELS = [1, 2, 3, 4];
+const $ = id => document.getElementById(id);
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
 let device = null;
-let sensorCharacteristic = null;
-let configCharacteristic = null;
-let syncCharacteristic   = null;
-let nameCharacteristic   = null;
-let restartCharacteristic = null;
+let sensorChar = null, configChar = null, syncChar = null;
+let nameChar = null, restartChar = null, testChar = null;
+let expectDisconnect = false;
+let liveTimer = null;
 
-function pct5(raw) {
-  return Math.round((raw / 255 * 100) / 5) * 5;
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function setStatus(text) { $("statusText").textContent = text; }
+
+const isConnected = () => !!(device && device.gatt && device.gatt.connected);
+const pct5 = raw => Math.round((raw / 255 * 100) / 5) * 5;
+const fmtDelay = v => (v / 10).toFixed(1) + "s";
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// DataView -> Uint8Array that respects byteOffset/byteLength
+const bytesOf = dv => new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
+
+// Web Bluetooth allows ONE GATT operation at a time. Overlapping calls throw
+// "GATT operation already in progress", so everything goes through this queue.
+let gattQueue = Promise.resolve();
+function gattOp(fn) {
+  const p = gattQueue.then(fn);
+  gattQueue = p.catch(() => {});   // keep the chain alive after a failure
+  return p;
+}
+function writeChar(ch, data) {
+  return gattOp(() =>
+    ch.writeValueWithResponse ? ch.writeValueWithResponse(data) : ch.writeValue(data)
+  );
 }
 
-function bindSlider(slider, valueSpan, formatter) {
-  slider.addEventListener("input", () => {
-    valueSpan.innerHTML = formatter(slider.value);
+// ---------------------------------------------------------------------------
+// Sliders <-> labels <-> 20-byte config packet
+// Layout per channel: [min, max, fade, downDelay*10, upDelay*10]
+// ---------------------------------------------------------------------------
+function refreshLabels(n) {
+  $(`min${n}v`).textContent  = $(`min${n}`).value;
+  $(`max${n}v`).textContent  = $(`max${n}`).value;
+  $(`fade${n}v`).textContent = $(`fade${n}`).value;
+  $(`dd${n}v`).textContent   = fmtDelay($(`dd${n}`).value);
+  $(`du${n}v`).textContent   = fmtDelay($(`du${n}`).value);
+}
+
+function buildConfig() {
+  const data = new Uint8Array(20);
+  CHANNELS.forEach((n, i) => {
+    data[i * 5 + 0] = parseInt($(`min${n}`).value, 10);
+    data[i * 5 + 1] = parseInt($(`max${n}`).value, 10);
+    data[i * 5 + 2] = parseInt($(`fade${n}`).value, 10);
+    data[i * 5 + 3] = parseInt($(`dd${n}`).value, 10);
+    data[i * 5 + 4] = parseInt($(`du${n}`).value, 10);
+  });
+  return data;
+}
+
+function applyConfigToUI(arr) {
+  CHANNELS.forEach((n, i) => {
+    $(`min${n}`).value  = arr[i * 5 + 0];
+    $(`max${n}`).value  = arr[i * 5 + 1];
+    $(`fade${n}`).value = arr[i * 5 + 2];
+    $(`dd${n}`).value   = arr[i * 5 + 3];
+    $(`du${n}`).value   = arr[i * 5 + 4];
+    refreshLabels(n);
   });
 }
 
-bindSlider(min1, min1v, v=>v);
-bindSlider(max1, max1v, v=>v);
-bindSlider(fade1, fade1v, v=>v);
-bindSlider(dd1, dd1v, v=> (v/10).toFixed(1) + "s");
-bindSlider(du1, du1v, v=> (v/10).toFixed(1) + "s");
+function scheduleLiveSend() {
+  clearTimeout(liveTimer);
+  liveTimer = setTimeout(() => {
+    if (!configChar) return;
+    writeChar(configChar, buildConfig()).catch(e => console.error("Live update failed:", e));
+  }, LIVE_DEBOUNCE_MS);
+}
 
-bindSlider(min2, min2v, v=>v);
-bindSlider(max2, max2v, v=>v);
-bindSlider(fade2, fade2v, v=>v);
-bindSlider(dd2, dd2v, v=> (v/10).toFixed(1) + "s");
-bindSlider(du2, du2v, v=> (v/10).toFixed(1) + "s");
+CHANNELS.forEach(n => {
+  const minS = $(`min${n}`), maxS = $(`max${n}`);
+  ["min", "max", "fade", "dd", "du"].forEach(k => {
+    $(`${k}${n}`).addEventListener("input", () => {
+      // keep min <= max so the UI matches what the board will actually use
+      if (k === "min" && +minS.value > +maxS.value) maxS.value = minS.value;
+      if (k === "max" && +maxS.value < +minS.value) minS.value = maxS.value;
+      refreshLabels(n);
+      if (LIVE_UPDATE) scheduleLiveSend();
+    });
+  });
+});
 
-bindSlider(min3, min3v, v=>v);
-bindSlider(max3, max3v, v=>v);
-bindSlider(fade3, fade3v, v=>v);
-bindSlider(dd3, dd3v, v=> (v/10).toFixed(1) + "s");
-bindSlider(du3, du3v, v=> (v/10).toFixed(1) + "s");
+// ---------------------------------------------------------------------------
+// Connection
+// ---------------------------------------------------------------------------
+function onSensor(event) {
+  const parts = new TextDecoder().decode(event.target.value).split(",").map(Number);
+  if (parts.length >= 4) {
+    for (let i = 0; i < 4; i++) $(`g${i + 1}`).textContent = pct5(parts[i]) + "%";
+  }
+}
 
-bindSlider(min4, min4v, v=>v);
-bindSlider(max4, max4v, v=>v);
-bindSlider(fade4, fade4v, v=>v);
-bindSlider(dd4, dd4v, v=> (v/10).toFixed(1) + "s");
-bindSlider(du4, du4v, v=> (v/10).toFixed(1) + "s");
+function onDisconnected() {
+  sensorChar = configChar = syncChar = nameChar = restartChar = testChar = null;
+  testDown = false;
+  clearTimeout(liveTimer);
+  for (let i = 1; i <= 4; i++) $(`g${i}`).textContent = "0%";
+  $("connectButton").textContent = "Connect";
+  setStatus(expectDisconnect
+    ? "Status: Board restarting – click Connect in a few seconds"
+    : "Status: Disconnected");
+  expectDisconnect = false;
+}
 
-connectButton.onclick = async () => {
+$("connectButton").onclick = async () => {
+  if (isConnected()) { device.gatt.disconnect(); return; }
+
+  if (!navigator.bluetooth) {
+    setStatus("Status: Web Bluetooth not available (use Chrome/Edge over HTTPS or localhost)");
+    return;
+  }
+
   try {
-    status.innerHTML = "Status: Requesting device...";
+    setStatus("Status: Requesting device...");
 
     device = await navigator.bluetooth.requestDevice({
-      filters: [{ namePrefix: "GI-Sentinel" }],
+      // filters are OR'd: match by service UUID or by name prefix
+      filters: [{ services: [SERVICE_UUID] }, { namePrefix: "GI-Sentinel" }],
       optionalServices: [SERVICE_UUID]
     });
 
+    device.removeEventListener("gattserverdisconnected", onDisconnected);
+    device.addEventListener("gattserverdisconnected", onDisconnected);
+
+    setStatus("Status: Connecting...");
     const server  = await device.gatt.connect();
     const service = await server.getPrimaryService(SERVICE_UUID);
 
-    sensorCharacteristic  = await service.getCharacteristic(SENSOR_CHARACTERISTIC_UUID);
-    configCharacteristic  = await service.getCharacteristic(CONFIG_CHARACTERISTIC_UUID);
-    syncCharacteristic    = await service.getCharacteristic(SYNC_CHARACTERISTIC_UUID);
-    nameCharacteristic    = await service.getCharacteristic(NAME_CHARACTERISTIC_UUID);
-    restartCharacteristic = await service.getCharacteristic(RESTART_CHARACTERISTIC_UUID);
+    sensorChar  = await service.getCharacteristic(SENSOR_CHARACTERISTIC_UUID);
+    configChar  = await service.getCharacteristic(CONFIG_CHARACTERISTIC_UUID);
+    syncChar    = await service.getCharacteristic(SYNC_CHARACTERISTIC_UUID);
+    nameChar    = await service.getCharacteristic(NAME_CHARACTERISTIC_UUID);
+    restartChar = await service.getCharacteristic(RESTART_CHARACTERISTIC_UUID);
+    // optional: older firmware won't have it, so don't fail the whole connect
+    testChar    = await service.getCharacteristic(TEST_CHARACTERISTIC_UUID).catch(() => null);
+    $("testButton").disabled = !testChar;
+    $("testButton").title = testChar ? "" : "Firmware has no test characteristic";
 
-    const syncData = await syncCharacteristic.readValue();
-    const arr = new Uint8Array(syncData.buffer);
+    const syncData = await gattOp(() => syncChar.readValue());
+    const arr = bytesOf(syncData);
+    if (arr.length >= 20) applyConfigToUI(arr);
+    else console.warn("Sync packet too short:", arr.length);
 
-    function loadChannel(i, min, max, fade, dd, du, minv, maxv, fadev, ddv, duv) {
-      min.value  = arr[i*5 + 0];
-      max.value  = arr[i*5 + 1];
-      fade.value = arr[i*5 + 2];
-      dd.value   = arr[i*5 + 3];
-      du.value   = arr[i*5 + 4];
+    const nameData = await gattOp(() => nameChar.readValue());
+    $("gameName").value = new TextDecoder().decode(nameData);
 
-      minv.innerHTML  = min.value;
-      maxv.innerHTML  = max.value;
-      fadev.innerHTML = fade.value;
-      ddv.innerHTML   = (dd.value/10).toFixed(1) + "s";
-      duv.innerHTML   = (du.value/10).toFixed(1) + "s";
-    }
+    sensorChar.removeEventListener("characteristicvaluechanged", onSensor);
+    sensorChar.addEventListener("characteristicvaluechanged", onSensor);
+    await gattOp(() => sensorChar.startNotifications());
 
-    loadChannel(0, min1, max1, fade1, dd1, du1, min1v, max1v, fade1v, dd1v, du1v);
-    loadChannel(1, min2, max2, fade2, dd2, du2, min2v, max2v, fade2v, dd2v, du2v);
-    loadChannel(2, min3, max3, fade3, dd3, du3, min3v, max3v, fade3v, dd3v, du3v);
-    loadChannel(3, min4, max4, fade4, dd4, du4, min4v, max4v, fade4v, dd4v, du4v);
-
-    const nameData = await nameCharacteristic.readValue();
-    gameName.value = new TextDecoder().decode(nameData);
-
-    await sensorCharacteristic.startNotifications();
-    sensorCharacteristic.addEventListener("characteristicvaluechanged", event => {
-      let txt = new TextDecoder().decode(event.target.value);
-      let parts = txt.split(",");
-      if (parts.length >= 4) {
-        g1.innerHTML = pct5(parts[0]) + "%";
-        g2.innerHTML = pct5(parts[1]) + "%";
-        g3.innerHTML = pct5(parts[2]) + "%";
-        g4.innerHTML = pct5(parts[3]) + "%";
-      }
-    });
-
-    status.innerHTML = "Status: Connected";
+    $("connectButton").textContent = "Disconnect";
+    setStatus("Status: Connected");
 
   } catch (e) {
-    console.error(e);
-    status.innerHTML = "Status: Error connecting";
+    if (/cancel/i.test(e.message || "")) {
+      setStatus("Status: Not connected");
+    } else {
+      console.error(e);
+      setStatus("Status: Error – " + (e.message || e));
+    }
+    if (isConnected()) device.gatt.disconnect();
   }
 };
 
-saveConfigButton.onclick = async () => {
-  if (!configCharacteristic) {
-    alert("Not connected to ESP32");
-    return;
-  }
-
-  const data = new Uint8Array(20);
-
-  function saveChannel(i, min, max, fade, dd, du) {
-    const base = i*5;
-    data[base + 0] = parseInt(min.value);
-    data[base + 1] = parseInt(max.value);
-    data[base + 2] = parseInt(fade.value);
-    data[base + 3] = parseInt(dd.value);
-    data[base + 4] = parseInt(du.value);
-  }
-
-  saveChannel(0, min1, max1, fade1, dd1, du1);
-  saveChannel(1, min2, max2, fade2, dd2, du2);
-  saveChannel(2, min3, max3, fade3, dd3, du3);
-  saveChannel(3, min4, max4, fade4, dd4, du4);
+// ---------------------------------------------------------------------------
+// Buttons
+// ---------------------------------------------------------------------------
+$("saveConfigButton").onclick = async () => {
+  if (!configChar) { alert("Not connected to ESP32"); return; }
 
   try {
-    await configCharacteristic.writeValue(data.buffer);
+    clearTimeout(liveTimer);
+    await writeChar(configChar, buildConfig());
+
+    // Read back what the board actually applied (it clamps/swaps bad values)
+    await sleep(150);
+    const dv = await gattOp(() => syncChar.readValue());
+    const arr = bytesOf(dv);
+    if (arr.length >= 20) applyConfigToUI(arr);
+
+    setStatus("Status: Connected – config saved");
+    setTimeout(() => { if (isConnected()) setStatus("Status: Connected"); }, 2000);
   } catch (e) {
     console.error("Error writing config:", e);
+    setStatus("Status: Save failed – " + (e.message || e));
   }
 };
 
-saveNameButton.onclick = async () => {
-  if (!nameCharacteristic) {
-    alert("Not connected to ESP32");
-    return;
-  }
+$("saveNameButton").onclick = async () => {
+  if (!nameChar) { alert("Not connected to ESP32"); return; }
+
+  const name = $("gameName").value.trim();
+  if (!name) { alert("Enter a game name first"); return; }
 
   try {
-    await nameCharacteristic.writeValue(new TextEncoder().encode(gameName.value));
-    alert("Game name saved. Restart ESP32 to update BLE name.");
+    await writeChar(nameChar, new TextEncoder().encode(name));
+    alert("Game name saved. Restart the board to update its Bluetooth name.");
   } catch (e) {
     console.error("Error writing name:", e);
+    setStatus("Status: Name save failed – " + (e.message || e));
   }
 };
 
-restartButton.onclick = async () => {
-  if (!restartCharacteristic) {
-    alert("Not connected to ESP32");
-    return;
-  }
+$("restartButton").onclick = async () => {
+  if (!restartChar) { alert("Not connected to ESP32"); return; }
 
+  expectDisconnect = true;
   try {
-    await restartCharacteristic.writeValue(new Uint8Array([1]));
-    setTimeout(() => location.reload(), 150);
+    await writeChar(restartChar, new Uint8Array([1]));
+    setStatus("Status: Restarting...");
+    // the board drops the link ~0.5s later; onDisconnected() finishes the UI update
   } catch (e) {
-    console.error("Restart failed:", e);
+    if (isConnected()) {            // a real failure, not just the board going away
+      expectDisconnect = false;
+      console.error("Restart failed:", e);
+      setStatus("Status: Restart failed – " + (e.message || e));
+    }
   }
 };
+
+// Test: hold the button = virtual input active, release = inactive.
+// (Same as pressing the physical input, so you can tune fades from the bench.)
+let testDown = false;
+function setTest(on) {
+  if (!testChar || testDown === on) return;
+  testDown = on;
+  $("testButton").classList.toggle("active", on);
+  writeChar(testChar, new Uint8Array([on ? 1 : 0]))
+    .catch(e => console.error("Test write failed:", e));
+}
+
+const tb = $("testButton");
+tb.style.touchAction = "none";
+tb.style.userSelect  = "none";
+tb.addEventListener("pointerdown", e => {
+  e.preventDefault();
+  tb.setPointerCapture(e.pointerId);
+  setTest(true);
+});
+["pointerup", "pointercancel", "lostpointercapture"].forEach(ev =>
+  tb.addEventListener(ev, () => setTest(false)));
+tb.addEventListener("contextmenu", e => e.preventDefault());
 </script>
 
 </body>
