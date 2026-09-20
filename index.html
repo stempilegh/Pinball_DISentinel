@@ -1,3 +1,5 @@
+<!-- 2:10pm 9/20/26 -->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,6 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>GI Sentinel – Data East Edition</title>
   <link rel="stylesheet" href="layout.css">
+
 </head>
 
 <body>
@@ -15,7 +18,6 @@
       <div class="header-left">
         <h1>GI Sentinel</h1>
         <button id="connectButton">Connect</button>
-        <!-- FIX: was id="status" (collides with window.status, see notes) -->
         <span id="statusText">Status: Not connected</span>
         <p class="brand">StempleLABS ©2026</p>
       </div>
@@ -32,10 +34,10 @@
     <!-- GAUGE ROW -->
     <div class="gauge-row">
       <button id="testButton">Test</button>
-      <div class="gauge"><span id="g1">0%</span></div>
-      <div class="gauge"><span id="g2">0%</span></div>
-      <div class="gauge"><span id="g3">0%</span></div>
-      <div class="gauge"><span id="g4">0%</span></div>
+      <div class="gauge-cell"><div class="gauge"><span id="g1">0%</span></div><div class="gauge-label">Ch 1</div></div>
+      <div class="gauge-cell"><div class="gauge"><span id="g2">0%</span></div><div class="gauge-label">Ch 2</div></div>
+      <div class="gauge-cell"><div class="gauge"><span id="g3">0%</span></div><div class="gauge-label">Ch 3</div></div>
+      <div class="gauge-cell"><div class="gauge"><span id="g4">0%</span></div><div class="gauge-label">Ch 4</div></div>
     </div>
 
     <!-- CHANNEL GRID -->
@@ -47,32 +49,40 @@
 
         <div class="row">
           <div class="row-label">Min</div>
-          <div class="row-value" id="min1v">0</div>
-          <input type="range" id="min1" min="0" max="255">
+          <div class="row-value" id="min1v">0%</div>
+          <input type="range" id="min1" min="0" max="100" value="0">
         </div>
 
         <div class="row">
           <div class="row-label">Max</div>
-          <div class="row-value" id="max1v">255</div>
-          <input type="range" id="max1" min="0" max="255">
+          <div class="row-value" id="max1v">100%</div>
+          <input type="range" id="max1" min="0" max="100" value="100">
         </div>
 
-        <div class="row">
-          <div class="row-label">Fade</div>
-          <div class="row-value" id="fade1v">5</div>
-          <input type="range" id="fade1" min="1" max="20">
+        <div class="row split-row">
+          <div class="split-half">
+            <div class="row-label">Fade Down</div>
+            <div class="row-value" id="fdn1v">5</div>
+            <input type="range" id="fdn1" min="1" max="20" value="5">
+          </div>
+          <div class="split-half">
+            <div class="row-label">Fade Up</div>
+            <div class="row-value" id="fup1v">5</div>
+            <input type="range" id="fup1" min="1" max="20" value="5">
+          </div>
         </div>
 
-        <div class="row">
-          <div class="row-label">Down Delay</div>
-          <div class="row-value" id="dd1v">0.0s</div>
-          <input type="range" id="dd1" min="0" max="20">
-        </div>
-
-        <div class="row">
-          <div class="row-label">Up Delay</div>
-          <div class="row-value" id="du1v">0.0s</div>
-          <input type="range" id="du1" min="0" max="20">
+        <div class="row split-row">
+          <div class="split-half">
+            <div class="row-label">Down Delay</div>
+            <div class="row-value" id="dd1v">0.0s</div>
+            <input type="range" id="dd1" min="0" max="20" value="0">
+          </div>
+          <div class="split-half">
+            <div class="row-label">Up Delay</div>
+            <div class="row-value" id="du1v">0.0s</div>
+            <input type="range" id="du1" min="0" max="20" value="0">
+          </div>
         </div>
       </div>
 
@@ -82,32 +92,40 @@
 
         <div class="row">
           <div class="row-label">Min</div>
-          <div class="row-value" id="min2v">0</div>
-          <input type="range" id="min2" min="0" max="255">
+          <div class="row-value" id="min2v">0%</div>
+          <input type="range" id="min2" min="0" max="100" value="0">
         </div>
 
         <div class="row">
           <div class="row-label">Max</div>
-          <div class="row-value" id="max2v">255</div>
-          <input type="range" id="max2" min="0" max="255">
+          <div class="row-value" id="max2v">100%</div>
+          <input type="range" id="max2" min="0" max="100" value="100">
         </div>
 
-        <div class="row">
-          <div class="row-label">Fade</div>
-          <div class="row-value" id="fade2v">5</div>
-          <input type="range" id="fade2" min="1" max="20">
+        <div class="row split-row">
+          <div class="split-half">
+            <div class="row-label">Fade Down</div>
+            <div class="row-value" id="fdn2v">5</div>
+            <input type="range" id="fdn2" min="1" max="20" value="5">
+          </div>
+          <div class="split-half">
+            <div class="row-label">Fade Up</div>
+            <div class="row-value" id="fup2v">5</div>
+            <input type="range" id="fup2" min="1" max="20" value="5">
+          </div>
         </div>
 
-        <div class="row">
-          <div class="row-label">Down Delay</div>
-          <div class="row-value" id="dd2v">0.0s</div>
-          <input type="range" id="dd2" min="0" max="20">
-        </div>
-
-        <div class="row">
-          <div class="row-label">Up Delay</div>
-          <div class="row-value" id="du2v">0.0s</div>
-          <input type="range" id="du2" min="0" max="20">
+        <div class="row split-row">
+          <div class="split-half">
+            <div class="row-label">Down Delay</div>
+            <div class="row-value" id="dd2v">0.0s</div>
+            <input type="range" id="dd2" min="0" max="20" value="0">
+          </div>
+          <div class="split-half">
+            <div class="row-label">Up Delay</div>
+            <div class="row-value" id="du2v">0.0s</div>
+            <input type="range" id="du2" min="0" max="20" value="0">
+          </div>
         </div>
       </div>
 
@@ -117,32 +135,40 @@
 
         <div class="row">
           <div class="row-label">Min</div>
-          <div class="row-value" id="min3v">0</div>
-          <input type="range" id="min3" min="0" max="255">
+          <div class="row-value" id="min3v">0%</div>
+          <input type="range" id="min3" min="0" max="100" value="0">
         </div>
 
         <div class="row">
           <div class="row-label">Max</div>
-          <div class="row-value" id="max3v">255</div>
-          <input type="range" id="max3" min="0" max="255">
+          <div class="row-value" id="max3v">100%</div>
+          <input type="range" id="max3" min="0" max="100" value="100">
         </div>
 
-        <div class="row">
-          <div class="row-label">Fade</div>
-          <div class="row-value" id="fade3v">5</div>
-          <input type="range" id="fade3" min="1" max="20">
+        <div class="row split-row">
+          <div class="split-half">
+            <div class="row-label">Fade Down</div>
+            <div class="row-value" id="fdn3v">5</div>
+            <input type="range" id="fdn3" min="1" max="20" value="5">
+          </div>
+          <div class="split-half">
+            <div class="row-label">Fade Up</div>
+            <div class="row-value" id="fup3v">5</div>
+            <input type="range" id="fup3" min="1" max="20" value="5">
+          </div>
         </div>
 
-        <div class="row">
-          <div class="row-label">Down Delay</div>
-          <div class="row-value" id="dd3v">0.0s</div>
-          <input type="range" id="dd3" min="0" max="20">
-        </div>
-
-        <div class="row">
-          <div class="row-label">Up Delay</div>
-          <div class="row-value" id="du3v">0.0s</div>
-          <input type="range" id="du3" min="0" max="20">
+        <div class="row split-row">
+          <div class="split-half">
+            <div class="row-label">Down Delay</div>
+            <div class="row-value" id="dd3v">0.0s</div>
+            <input type="range" id="dd3" min="0" max="20" value="0">
+          </div>
+          <div class="split-half">
+            <div class="row-label">Up Delay</div>
+            <div class="row-value" id="du3v">0.0s</div>
+            <input type="range" id="du3" min="0" max="20" value="0">
+          </div>
         </div>
       </div>
 
@@ -152,32 +178,40 @@
 
         <div class="row">
           <div class="row-label">Min</div>
-          <div class="row-value" id="min4v">0</div>
-          <input type="range" id="min4" min="0" max="255">
+          <div class="row-value" id="min4v">0%</div>
+          <input type="range" id="min4" min="0" max="100" value="0">
         </div>
 
         <div class="row">
           <div class="row-label">Max</div>
-          <div class="row-value" id="max4v">255</div>
-          <input type="range" id="max4" min="0" max="255">
+          <div class="row-value" id="max4v">100%</div>
+          <input type="range" id="max4" min="0" max="100" value="100">
         </div>
 
-        <div class="row">
-          <div class="row-label">Fade</div>
-          <div class="row-value" id="fade4v">5</div>
-          <input type="range" id="fade4" min="1" max="20">
+        <div class="row split-row">
+          <div class="split-half">
+            <div class="row-label">Fade Down</div>
+            <div class="row-value" id="fdn4v">5</div>
+            <input type="range" id="fdn4" min="1" max="20" value="5">
+          </div>
+          <div class="split-half">
+            <div class="row-label">Fade Up</div>
+            <div class="row-value" id="fup4v">5</div>
+            <input type="range" id="fup4" min="1" max="20" value="5">
+          </div>
         </div>
 
-        <div class="row">
-          <div class="row-label">Down Delay</div>
-          <div class="row-value" id="dd4v">0.0s</div>
-          <input type="range" id="dd4" min="0" max="20">
-        </div>
-
-        <div class="row">
-          <div class="row-label">Up Delay</div>
-          <div class="row-value" id="du4v">0.0s</div>
-          <input type="range" id="du4" min="0" max="20">
+        <div class="row split-row">
+          <div class="split-half">
+            <div class="row-label">Down Delay</div>
+            <div class="row-value" id="dd4v">0.0s</div>
+            <input type="range" id="dd4" min="0" max="20" value="0">
+          </div>
+          <div class="split-half">
+            <div class="row-label">Up Delay</div>
+            <div class="row-value" id="du4v">0.0s</div>
+            <input type="range" id="du4" min="0" max="20" value="0">
+          </div>
         </div>
       </div>
 
@@ -197,6 +231,7 @@
 // ---------------------------------------------------------------------------
 const LIVE_UPDATE      = true;  // send config to the board while sliders move (board saves to flash 2s after you stop)
 const LIVE_DEBOUNCE_MS = 120;
+const DEBUG            = true;  // log raw notifications to the browser console
 
 const SERVICE_UUID                = "19b10000-e8f2-537e-4f6c-d104768a1214";
 const SENSOR_CHARACTERISTIC_UUID  = "19b10001-e8f2-537e-4f6c-d104768a1214";
@@ -206,7 +241,12 @@ const NAME_CHARACTERISTIC_UUID    = "19b10004-e8f2-537e-4f6c-d104768a1214";
 const RESTART_CHARACTERISTIC_UUID = "19b10005-e8f2-537e-4f6c-d104768a1214";
 const TEST_CHARACTERISTIC_UUID    = "19b10006-e8f2-537e-4f6c-d104768a1214";
 
-const CHANNELS = [1, 2, 3, 4];
+// Config packet: 4 channels x 6 bytes = 24 bytes
+//   per channel: [min, max, fadeDown, fadeUp, downDelay*10, upDelay*10]
+const CHANNELS   = [1, 2, 3, 4];
+const CFG_STRIDE = 6;
+const CONFIG_LEN = CHANNELS.length * CFG_STRIDE;
+
 const $ = id => document.getElementById(id);
 
 // ---------------------------------------------------------------------------
@@ -224,7 +264,11 @@ let liveTimer = null;
 function setStatus(text) { $("statusText").textContent = text; }
 
 const isConnected = () => !!(device && device.gatt && device.gatt.connected);
-const pct5 = raw => Math.round((raw / 255 * 100) / 5) * 5;
+
+// The board works in 0..255; the dashboard shows min/max/gauges as 0..100 %.
+const byteToPct = b => Math.round(b * 100 / 255);
+const pctToByte = p => Math.round(p * 255 / 100);
+
 const fmtDelay = v => (v / 10).toFixed(1) + "s";
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -246,36 +290,40 @@ function writeChar(ch, data) {
 }
 
 // ---------------------------------------------------------------------------
-// Sliders <-> labels <-> 20-byte config packet
-// Layout per channel: [min, max, fade, downDelay*10, upDelay*10]
+// Sliders <-> labels <-> 24-byte config packet
 // ---------------------------------------------------------------------------
 function refreshLabels(n) {
-  $(`min${n}v`).textContent  = $(`min${n}`).value;
-  $(`max${n}v`).textContent  = $(`max${n}`).value;
-  $(`fade${n}v`).textContent = $(`fade${n}`).value;
-  $(`dd${n}v`).textContent   = fmtDelay($(`dd${n}`).value);
-  $(`du${n}v`).textContent   = fmtDelay($(`du${n}`).value);
+  $(`min${n}v`).textContent = $(`min${n}`).value + "%";
+  $(`max${n}v`).textContent = $(`max${n}`).value + "%";
+  $(`fdn${n}v`).textContent = $(`fdn${n}`).value;
+  $(`fup${n}v`).textContent = $(`fup${n}`).value;
+  $(`dd${n}v`).textContent  = fmtDelay($(`dd${n}`).value);
+  $(`du${n}v`).textContent  = fmtDelay($(`du${n}`).value);
 }
 
 function buildConfig() {
-  const data = new Uint8Array(20);
+  const data = new Uint8Array(CONFIG_LEN);
   CHANNELS.forEach((n, i) => {
-    data[i * 5 + 0] = parseInt($(`min${n}`).value, 10);
-    data[i * 5 + 1] = parseInt($(`max${n}`).value, 10);
-    data[i * 5 + 2] = parseInt($(`fade${n}`).value, 10);
-    data[i * 5 + 3] = parseInt($(`dd${n}`).value, 10);
-    data[i * 5 + 4] = parseInt($(`du${n}`).value, 10);
+    const b = i * CFG_STRIDE;
+    data[b + 0] = pctToByte(parseInt($(`min${n}`).value, 10));
+    data[b + 1] = pctToByte(parseInt($(`max${n}`).value, 10));
+    data[b + 2] = parseInt($(`fdn${n}`).value, 10);
+    data[b + 3] = parseInt($(`fup${n}`).value, 10);
+    data[b + 4] = parseInt($(`dd${n}`).value, 10);
+    data[b + 5] = parseInt($(`du${n}`).value, 10);
   });
   return data;
 }
 
 function applyConfigToUI(arr) {
   CHANNELS.forEach((n, i) => {
-    $(`min${n}`).value  = arr[i * 5 + 0];
-    $(`max${n}`).value  = arr[i * 5 + 1];
-    $(`fade${n}`).value = arr[i * 5 + 2];
-    $(`dd${n}`).value   = arr[i * 5 + 3];
-    $(`du${n}`).value   = arr[i * 5 + 4];
+    const b = i * CFG_STRIDE;
+    $(`min${n}`).value = byteToPct(arr[b + 0]);
+    $(`max${n}`).value = byteToPct(arr[b + 1]);
+    $(`fdn${n}`).value = arr[b + 2];
+    $(`fup${n}`).value = arr[b + 3];
+    $(`dd${n}`).value  = arr[b + 4];
+    $(`du${n}`).value  = arr[b + 5];
     refreshLabels(n);
   });
 }
@@ -290,7 +338,7 @@ function scheduleLiveSend() {
 
 CHANNELS.forEach(n => {
   const minS = $(`min${n}`), maxS = $(`max${n}`);
-  ["min", "max", "fade", "dd", "du"].forEach(k => {
+  ["min", "max", "fdn", "fup", "dd", "du"].forEach(k => {
     $(`${k}${n}`).addEventListener("input", () => {
       // keep min <= max so the UI matches what the board will actually use
       if (k === "min" && +minS.value > +maxS.value) maxS.value = minS.value;
@@ -305,17 +353,25 @@ CHANNELS.forEach(n => {
 // Connection
 // ---------------------------------------------------------------------------
 function onSensor(event) {
-  const parts = new TextDecoder().decode(event.target.value).split(",").map(Number);
-  if (parts.length >= 4) {
-    for (let i = 0; i < 4; i++) $(`g${i + 1}`).textContent = pct5(parts[i]) + "%";
-  }
+  const txt = new TextDecoder().decode(event.target.value).replace(/\0/g, "").trim();
+  if (DEBUG) console.log("sensor packet:", JSON.stringify(txt));
+
+  const parts = txt.split(",").map(s => parseInt(s, 10));
+  CHANNELS.forEach((n, i) => {
+    const el = $(`g${n}`);
+    if (Number.isFinite(parts[i])) {
+      el.textContent = byteToPct(parts[i]) + "%";
+    } else {
+      console.warn(`No value for channel ${n} in packet:`, txt);
+    }
+  });
 }
 
 function onDisconnected() {
   sensorChar = configChar = syncChar = nameChar = restartChar = testChar = null;
   testDown = false;
   clearTimeout(liveTimer);
-  for (let i = 1; i <= 4; i++) $(`g${i}`).textContent = "0%";
+  CHANNELS.forEach(n => { $(`g${n}`).textContent = "0%"; });
   $("connectButton").textContent = "Connect";
   setStatus(expectDisconnect
     ? "Status: Board restarting – click Connect in a few seconds"
@@ -359,8 +415,13 @@ $("connectButton").onclick = async () => {
 
     const syncData = await gattOp(() => syncChar.readValue());
     const arr = bytesOf(syncData);
-    if (arr.length >= 20) applyConfigToUI(arr);
-    else console.warn("Sync packet too short:", arr.length);
+    let protocolOk = true;
+    if (arr.length >= CONFIG_LEN) {
+      applyConfigToUI(arr);
+    } else {
+      protocolOk = false;
+      console.warn(`Sync packet is ${arr.length} bytes, expected ${CONFIG_LEN}. Reflash the board.`);
+    }
 
     const nameData = await gattOp(() => nameChar.readValue());
     $("gameName").value = new TextDecoder().decode(nameData);
@@ -370,7 +431,9 @@ $("connectButton").onclick = async () => {
     await gattOp(() => sensorChar.startNotifications());
 
     $("connectButton").textContent = "Disconnect";
-    setStatus("Status: Connected");
+    setStatus(protocolOk
+      ? "Status: Connected"
+      : `Status: Connected – firmware mismatch (got ${arr.length} bytes, expected ${CONFIG_LEN}); reflash the board`);
 
   } catch (e) {
     if (/cancel/i.test(e.message || "")) {
@@ -397,7 +460,7 @@ $("saveConfigButton").onclick = async () => {
     await sleep(150);
     const dv = await gattOp(() => syncChar.readValue());
     const arr = bytesOf(dv);
-    if (arr.length >= 20) applyConfigToUI(arr);
+    if (arr.length >= CONFIG_LEN) applyConfigToUI(arr);
 
     setStatus("Status: Connected – config saved");
     setTimeout(() => { if (isConnected()) setStatus("Status: Connected"); }, 2000);
@@ -440,7 +503,6 @@ $("restartButton").onclick = async () => {
 };
 
 // Test: hold the button = virtual input active, release = inactive.
-// (Same as pressing the physical input, so you can tune fades from the bench.)
 let testDown = false;
 function setTest(on) {
   if (!testChar || testDown === on) return;
