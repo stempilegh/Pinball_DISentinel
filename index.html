@@ -1,5 +1,4 @@
-<!-- 2:20 9-20-206 -->
-
+<!-- 3:07 9-20-206 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,10 +35,10 @@
     <!-- GAUGE ROW -->
     <div class="gauge-row">
       <button id="testButton">Test</button>
-      <div class="gauge-cell"><div class="gauge"><span id="g1">0%</span></div><div class="gauge-label">Ch 1</div></div>
-      <div class="gauge-cell"><div class="gauge"><span id="g2">0%</span></div><div class="gauge-label">Ch 2</div></div>
-      <div class="gauge-cell"><div class="gauge"><span id="g3">0%</span></div><div class="gauge-label">Ch 3</div></div>
-      <div class="gauge-cell"><div class="gauge"><span id="g4">0%</span></div><div class="gauge-label">Ch 4</div></div>
+      <div class="gauge-cell"><div class="gauge"><span id="g1">0%</span></div><div class="gauge-label" id="gl1">Ch 1</div></div>
+      <div class="gauge-cell"><div class="gauge"><span id="g2">0%</span></div><div class="gauge-label" id="gl2">Ch 2</div></div>
+      <div class="gauge-cell"><div class="gauge"><span id="g3">0%</span></div><div class="gauge-label" id="gl3">Ch 3</div></div>
+      <div class="gauge-cell"><div class="gauge"><span id="g4">0%</span></div><div class="gauge-label" id="gl4">Ch 4</div></div>
     </div>
 
     <!-- CHANNEL GRID -->
@@ -47,7 +46,10 @@
 
       <!-- CHANNEL 1 -->
       <div class="channel-box">
-        <h3>Channel 1</h3>
+        <h3 class="channel-title">
+          <span>Channel 1</span>
+          <input type="text" class="channel-name" id="name1" maxlength="12" placeholder="Name" aria-label="Channel 1 name" disabled>
+        </h3>
 
         <div class="row">
           <div class="row-label">Min</div>
@@ -90,7 +92,10 @@
 
       <!-- CHANNEL 2 -->
       <div class="channel-box">
-        <h3>Channel 2</h3>
+        <h3 class="channel-title">
+          <span>Channel 2</span>
+          <input type="text" class="channel-name" id="name2" maxlength="12" placeholder="Name" aria-label="Channel 2 name" disabled>
+        </h3>
 
         <div class="row">
           <div class="row-label">Min</div>
@@ -133,7 +138,10 @@
 
       <!-- CHANNEL 3 -->
       <div class="channel-box">
-        <h3>Channel 3</h3>
+        <h3 class="channel-title">
+          <span>Channel 3</span>
+          <input type="text" class="channel-name" id="name3" maxlength="12" placeholder="Name" aria-label="Channel 3 name" disabled>
+        </h3>
 
         <div class="row">
           <div class="row-label">Min</div>
@@ -176,7 +184,10 @@
 
       <!-- CHANNEL 4 -->
       <div class="channel-box">
-        <h3>Channel 4</h3>
+        <h3 class="channel-title">
+          <span>Channel 4</span>
+          <input type="text" class="channel-name" id="name4" maxlength="12" placeholder="Name" aria-label="Channel 4 name" disabled>
+        </h3>
 
         <div class="row">
           <div class="row-label">Min</div>
@@ -242,6 +253,7 @@ const SYNC_CHARACTERISTIC_UUID    = "19b10003-e8f2-537e-4f6c-d104768a1214";
 const NAME_CHARACTERISTIC_UUID    = "19b10004-e8f2-537e-4f6c-d104768a1214";
 const RESTART_CHARACTERISTIC_UUID = "19b10005-e8f2-537e-4f6c-d104768a1214";
 const TEST_CHARACTERISTIC_UUID    = "19b10006-e8f2-537e-4f6c-d104768a1214";
+const CHNAMES_CHARACTERISTIC_UUID = "19b10007-e8f2-537e-4f6c-d104768a1214";
 
 // Config packet: 4 channels x 6 bytes = 24 bytes
 //   per channel: [min, max, fadeDown, fadeUp, downDelay*10, upDelay*10]
@@ -256,7 +268,7 @@ const $ = id => document.getElementById(id);
 // ---------------------------------------------------------------------------
 let device = null;
 let sensorChar = null, configChar = null, syncChar = null;
-let nameChar = null, restartChar = null, testChar = null;
+let nameChar = null, restartChar = null, testChar = null, chNamesChar = null;
 let expectDisconnect = false;
 let liveTimer = null;
 
@@ -352,6 +364,45 @@ CHANNELS.forEach(n => {
 });
 
 // ---------------------------------------------------------------------------
+// Channel names (stored on the board; shown on the cards and under the gauges)
+// Sent as "name1|name2|name3|name4". ASCII only, 12 chars max, no "|".
+// ---------------------------------------------------------------------------
+const cleanName = s => s.replace(/[^\x20-\x7E]/g, "").replace(/\|/g, "").trim().slice(0, 12);
+
+function refreshNameLabels() {
+  CHANNELS.forEach(n => {
+    $(`gl${n}`).textContent = cleanName($(`name${n}`).value) || `Ch ${n}`;
+  });
+}
+
+function applyNamesToUI(str) {
+  const parts = str.split("|");
+  CHANNELS.forEach((n, i) => { $(`name${n}`).value = cleanName(parts[i] || ""); });
+  refreshNameLabels();
+}
+
+function setNameInputsEnabled(on) {
+  CHANNELS.forEach(n => { $(`name${n}`).disabled = !on; });
+}
+
+CHANNELS.forEach(n => {
+  const el = $(`name${n}`);
+  el.addEventListener("input", refreshNameLabels);          // label follows typing
+  el.addEventListener("change", async () => {               // save when you leave the box / press Enter
+    el.value = cleanName(el.value);
+    refreshNameLabels();
+    if (!chNamesChar) return;
+    const joined = CHANNELS.map(m => cleanName($(`name${m}`).value)).join("|");
+    try {
+      await writeChar(chNamesChar, new TextEncoder().encode(joined));
+    } catch (e) {
+      console.error("Channel name write failed:", e);
+      setStatus("Status: Channel name save failed – " + (e.message || e));
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Connection
 // ---------------------------------------------------------------------------
 function onSensor(event) {
@@ -370,7 +421,8 @@ function onSensor(event) {
 }
 
 function onDisconnected() {
-  sensorChar = configChar = syncChar = nameChar = restartChar = testChar = null;
+  sensorChar = configChar = syncChar = nameChar = restartChar = testChar = chNamesChar = null;
+  setNameInputsEnabled(false);
   testDown = false;
   clearTimeout(liveTimer);
   CHANNELS.forEach(n => { $(`g${n}`).textContent = "0%"; });
@@ -414,6 +466,8 @@ $("connectButton").onclick = async () => {
     testChar    = await service.getCharacteristic(TEST_CHARACTERISTIC_UUID).catch(() => null);
     $("testButton").disabled = !testChar;
     $("testButton").title = testChar ? "" : "Firmware has no test characteristic";
+    // optional as well: older firmware can't store channel names
+    chNamesChar = await service.getCharacteristic(CHNAMES_CHARACTERISTIC_UUID).catch(() => null);
 
     const syncData = await gattOp(() => syncChar.readValue());
     const arr = bytesOf(syncData);
@@ -427,6 +481,15 @@ $("connectButton").onclick = async () => {
 
     const nameData = await gattOp(() => nameChar.readValue());
     $("gameName").value = new TextDecoder().decode(nameData);
+
+    if (chNamesChar) {
+      const cn = await gattOp(() => chNamesChar.readValue());
+      applyNamesToUI(new TextDecoder().decode(cn));
+    }
+    setNameInputsEnabled(!!chNamesChar);
+    CHANNELS.forEach(n => {
+      $(`name${n}`).title = chNamesChar ? "" : "Firmware has no channel-name support - reflash the board";
+    });
 
     sensorChar.removeEventListener("characteristicvaluechanged", onSensor);
     sensorChar.addEventListener("characteristicvaluechanged", onSensor);
