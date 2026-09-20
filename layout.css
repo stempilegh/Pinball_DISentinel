@@ -1,5 +1,7 @@
 /* ===== GI Sentinel – Data East Edition ===== */
 
+/* 3:07 9-20-2026 */
+
 body {
   background: #0A0A0C;
   color: #F2F2F2;
@@ -141,6 +143,9 @@ button:disabled:hover {
 }
 
 .gauge-label {
+  max-width: 130px;
+  text-align: center;
+  overflow-wrap: anywhere;
   font-size: 12px;
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -188,6 +193,29 @@ button:disabled:hover {
   border-bottom: 1px solid rgba(0,191,255,0.3);
   padding-bottom: 6px;
   margin-bottom: 10px;
+}
+
+/* channel title: "Channel N" on the left, editable name on the right */
+.channel-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.channel-title input.channel-name {
+  flex: 1 1 0;
+  width: auto;          /* beats the 260px default for text inputs */
+  min-width: 0;
+  max-width: 220px;
+  padding: 4px 8px;
+  font-size: 13px;
+  text-align: right;
+}
+
+.channel-title input.channel-name:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* ===== CHANNEL ROWS ===== */
